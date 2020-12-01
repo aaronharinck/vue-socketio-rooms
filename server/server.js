@@ -106,6 +106,9 @@ io.on("connection", socket => {
     //Pass name to clients and show users
     clients[socket.id].name = name;
     console.log(clients[socket.id]);
+    // You can also add an username attribute to the socket connection instance
+    socket.username = name;
+    console.log(`Behold: ${socket.username}`);
     socket.emit("name", clients[socket.id]);
 
     // Get all names from clients
