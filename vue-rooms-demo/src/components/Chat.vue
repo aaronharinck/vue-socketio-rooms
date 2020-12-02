@@ -1,6 +1,6 @@
 <template>
   <div class="hello">
-    <h1>{{ msg }}</h1>
+    <h1>{{ connectedRoom }}</h1>
     <div v-if="!loggedIn">
       <p>You are not logged in! Please Login {{ enteredName }}</p>
       <p v-if="loginError">{{ loginError }}</p>
@@ -19,6 +19,19 @@
           Send chat message to server
         </button>
       </p>
+      <p>
+        <button @click="createRoom('room1')">
+          Create a room
+        </button>
+      </p>
+      <div
+        class="roomCard"
+        v-for="room in rooms"
+        :key="room.name"
+        @click="joinRoom(room.name)"
+      >
+        {{ room.name }}
+      </div>
     </div>
   </div>
 </template>
@@ -36,6 +49,8 @@ export default {
       id: "",
       loginError: "",
       clientNames: [],
+      rooms: "",
+      connectedRoom: "Not connected to a room",
     };
   },
   props: {
@@ -56,6 +71,7 @@ export default {
       this.loggedIn = true;
       this.id = id;
     });
+
     //receiveErrors
     this.socket.on("name-error", error => {
       this.loginError = error;
@@ -73,10 +89,23 @@ export default {
     this.socket.on("connectedClients", clientNames => {
       this.showConnectedClients(clientNames);
     });
+
+    //show all rooms
+    this.socket.on("allRooms", rooms => {
+      this.showAllRooms(rooms);
+    });
+
+    this.socket.on("joinedRoom", roomName => {
+      this.connectedRoom = roomName;
+    });
+
+    // Room specific emits
+    this.socket.on("roomEntered", data => {
+      console.log(data);
+    });
   },
   methods: {
     logIn() {
-      console.log(this.enteredName);
       this.socket.emit("name", `${this.enteredName}`);
     },
     chat(msg) {
@@ -89,6 +118,17 @@ export default {
     },
     showConnectedClients(clientNames) {
       this.clientNames = clientNames;
+    },
+    showAllRooms(rooms) {
+      this.rooms = rooms;
+    },
+    //You can create a room by letting someone join a room which does not exist
+    createRoom(roomName) {
+      this.socket.emit("createRoom", roomName);
+    },
+    //Join a room that already exists
+    joinRoom(roomName) {
+      this.socket.emit("joinRoom", roomName);
     },
   },
 };
@@ -109,5 +149,10 @@ li {
 }
 a {
   color: #42b983;
+}
+.roomCard {
+  padding: 20px;
+  background: greenyellow;
+  cursor: pointer;
 }
 </style>
