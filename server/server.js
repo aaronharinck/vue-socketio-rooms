@@ -102,7 +102,7 @@ io.on("connection", socket => {
     console.log(message + ` id: ${socket.id}`);
   });
 
-  io.on("msg", message => {
+  socket.on("msg", message => {
     console.log(message + "io");
   });
 
