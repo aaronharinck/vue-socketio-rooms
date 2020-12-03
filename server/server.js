@@ -3,7 +3,7 @@ const express = require("express");
 const expressApp = express();
 const http = require("http").Server(expressApp); // http is part of node but we require it for socket.io
 // init socket.io
-// const io = require("socket.io")(http);
+// const io = require("socket.io")(http) does not work anymore, you need to handle CORS (if you want a seperated back & front-end);
 const io = require("socket.io")(http, {
   cors: {
     origin: "http://localhost:8080",
@@ -14,6 +14,7 @@ const port = process.env.PORT || 3000;
 
 // load other scripts
 const Validate = require("./s_scripts/validate.js");
+const RandomName = require("./s_scripts/randomName.js");
 
 http.listen(port, () => {
   console.log(`Listening at port ${port}...`);
@@ -23,11 +24,16 @@ http.listen(port, () => {
 const clients = {};
 
 //init rooms
-const rooms = {};
+const rooms = {
+  room2: {
+    name: "President Clifford",
+    users: { QYMUxUdRy6iILgbtAAAP: "Dirk" },
+  },
+};
 
 const createRoom = room => {};
 
-// Functions
+/*--- Functions ---*/
 // calculate all current connected clients
 const calcConnectedClients = () => {
   let nameSummary = [];
@@ -38,6 +44,20 @@ const calcConnectedClients = () => {
   io.emit("connectedClients", nameSummary);
 };
 
+// get all rooms the user is in
+const getUserRooms = socket => {
+  // convert rooms object to an array with Object.entries
+  // get all roomNames, name: key, room:value
+  return Object.entries(rooms).reduce((roomNames, [roomName, room]) => {
+    if (room.users[socket.id]) {
+      //if the room contains the user, push it to the roomNames array
+      roomNames.push(roomName);
+    }
+    return roomNames;
+  }, []);
+};
+
+/*--- SOCKET.IO ---*/
 io.on("connection", socket => {
   //log if a user connected
   console.log(`a user connected: ${socket.id}`);
@@ -52,39 +72,64 @@ io.on("connection", socket => {
 
   //create a room
   socket.on("createRoom", roomName => {
+    //check if the room does not already exist and user is logged in
+    if (rooms[roomName] || !socket.username) {
+      console.log(
+        "failed to create new room, it already exists or you are not logged in"
+      );
+      // emit an error
+      return;
+    }
     //if the roomName does not exist, socket.join will create a new room
     socket.join(roomName);
+
     //socket.rooms will contain multiple rooms because each socket automatically joins a room identified by its id as a default room
     console.log(socket.rooms);
 
-    //{room: "room"}
-    //rooms[roomName] = roomName;
-
-    //{room: "room", users: {}}
+    //add it to our own room object and pass an empty default users object
     rooms[roomName] = { name: roomName, users: {} };
 
+    /* view all the rooms
     console.log(rooms);
-    // console.log(roomName);
     console.log(io.sockets.adapter.rooms);
-    // console.log(socket.rooms);
+    */
+
+    //emit an event that we created a room to the creator
+    //this should redirect the user to the created room in front-end
     socket.emit("createdRoom", roomName);
+
+    //because a new room was created, send an event with updated rooms
     io.emit("allRooms", rooms);
+
+    console.log(socket.rooms);
     console.log(rooms[roomName]);
   });
 
   //join a room
   socket.on("joinRoom", roomName => {
-    if (roomName in rooms) {
+    //check if room already exsists and if user is logged in
+    if (roomName in rooms && socket.username) {
       socket.join(roomName);
-      console.log(`joined ${roomName}`);
+      console.log(`${socket.username} joined ${roomName}`);
+      //add joined user to our rooms object
+      rooms[roomName].users[socket.id] = socket.username; //{ room1: { name: 'room1', users: { QYMUxUdRy6iILgbtAAAP: 'Aaron' } } }
       io.to(roomName).emit(
         "roomEntered",
         `${socket.username} has joined ${roomName}`
       );
+      console.log(rooms);
       return socket.emit("joinedRoom", roomName);
     } else {
       return socket.emit("err", `Can't find room ${roomName}`);
     }
+  });
+
+  //communicate with the room only (send message with name that comes from socket.id)
+  socket.on("sendToRoom", (roomName, message) => {
+    io.in(roomName).emit("toRoom", {
+      message: message,
+      name: rooms[roomName].users[socket.id],
+    });
   });
 
   //join a room
@@ -177,6 +222,14 @@ io.on("connection", socket => {
 
   //remove id if client disconnected
   socket.on("disconnect", () => {
+    //remove rooms that client was in
+    console.log(rooms);
+    getUserRooms(socket).forEach(roomName => {
+      console.log(`${socket.id} has left ${roomName}`);
+      //delete user from rooms object
+      delete rooms[roomName].users[socket.id];
+    });
+    console.log(rooms);
     console.log(
       `A user (${socket.id} ${
         clients[socket.id].name ? clients[socket.id].name : ""
