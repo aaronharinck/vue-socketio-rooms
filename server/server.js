@@ -14,7 +14,7 @@ const port = process.env.PORT || 3000;
 
 // load other scripts
 const Validate = require("./s_scripts/validate.js");
-const RandomName = require("./s_scripts/randomName.js");
+const GetRandom = require("./s_scripts/getRandom.js");
 
 http.listen(port, () => {
   console.log(`Listening at port ${port}...`);
@@ -26,7 +26,7 @@ const clients = {};
 //init rooms
 const rooms = {
   room2: {
-    name: "President Clifford",
+    name: "room2",
     users: { QYMUxUdRy6iILgbtAAAP: "Dirk" },
   },
 };
@@ -72,11 +72,18 @@ io.on("connection", socket => {
 
   //create a room
   socket.on("createRoom", roomName => {
-    //check if the room does not already exist and user is logged in
-    if (rooms[roomName] || !socket.username) {
-      console.log(
-        "failed to create new room, it already exists or you are not logged in"
-      );
+    //stop creation of extra rooms when user is already in one, or if user is not logged in
+    if (socket.connectedRoom || !socket.username) {
+      return console.log(`already linked to a room or user is not logged in`);
+    }
+
+    //get a randomRoomName
+    roomName = GetRandom.randomRoomName(rooms);
+    console.log(`Current room count: ${Object.keys(rooms).length}`);
+
+    //check if the room does not already exist
+    if (rooms[roomName]) {
+      console.log("failed to create new room, it already exists");
       // emit an error
       return;
     }
@@ -88,6 +95,17 @@ io.on("connection", socket => {
 
     //add it to our own room object and pass an empty default users object
     rooms[roomName] = { name: roomName, users: {} };
+
+    //add creator of the room to the room by default
+    rooms[roomName].users[socket.id] = socket.username;
+
+    //create a rooms property to keep track of user rooms
+    socket.connectedRoom = rooms[roomName];
+    clients[socket.id].connectedRoom = rooms[roomName];
+
+    console.log("-----");
+    console.log(socket.connectedRoom);
+    console.log("-----");
 
     /* view all the rooms
     console.log(rooms);
@@ -101,7 +119,6 @@ io.on("connection", socket => {
     //because a new room was created, send an event with updated rooms
     io.emit("allRooms", rooms);
 
-    console.log(socket.rooms);
     console.log(rooms[roomName]);
   });
 
@@ -109,7 +126,22 @@ io.on("connection", socket => {
   socket.on("joinRoom", roomName => {
     //check if room already exsists and if user is logged in
     if (roomName in rooms && socket.username) {
+      console.log(socket.rooms);
+      //check if user is already connected to another room
+      if (socket.connectedRoom) {
+        console.log(
+          `already connected to another room: ${
+            Object.values(socket.connectedRoom)[0]
+          }`
+        );
+        // leave the previous room
+        socket.leave(Object.values(socket.connectedRoom)[0]);
+        delete socket.connectedRoom;
+        delete clients[socket.id].connectedRoom;
+      }
+      console.log(socket.rooms);
       socket.join(roomName);
+      console.log(socket.rooms);
       console.log(`${socket.username} joined ${roomName}`);
       //add joined user to our rooms object
       rooms[roomName].users[socket.id] = socket.username; //{ room1: { name: 'room1', users: { QYMUxUdRy6iILgbtAAAP: 'Aaron' } } }
@@ -132,7 +164,7 @@ io.on("connection", socket => {
     });
   });
 
-  //join a room
+  //join a room (if rooms was an array)
   // socket.on("joinRoom", roomName => {
   //   if (rooms.includes(roomName)) {
   //     socket.join(roomName);
@@ -142,10 +174,15 @@ io.on("connection", socket => {
   //   }
   // });
 
-  // When a Vue client mounts get a message with the client id.
+  // When a Vue client mounts get a message with the client id from the client.
   socket.on("establishedConnection", message => {
     console.log(message + ` id: ${socket.id}`);
   });
+  // send msg to client who has connected
+  socket.emit(
+    "receiveFromServer",
+    "this msg is from the server, you are connected"
+  );
 
   socket.on("msg", message => {
     console.log(message + "io");
@@ -157,12 +194,6 @@ io.on("connection", socket => {
     socket.emit("receiveFromServer", message);
     io.emit("receiveFromServer", message + " to all clients");
   });
-
-  // send msg to client who has connected
-  socket.emit(
-    "receiveFromServer",
-    "this msg is from the server, you are connected"
-  );
 
   //link name
   socket.on("name", name => {
@@ -228,6 +259,12 @@ io.on("connection", socket => {
       console.log(`${socket.id} has left ${roomName}`);
       //delete user from rooms object
       delete rooms[roomName].users[socket.id];
+      //delete room if there are 0 users
+      if (Object.keys(rooms[roomName].users).length === 0) {
+        delete rooms[roomName];
+        //because a room was deleted, send an updated rooms event
+        io.emit("allRooms", rooms);
+      }
     });
     console.log(rooms);
     console.log(
@@ -236,7 +273,7 @@ io.on("connection", socket => {
       }) disconnected `
     );
 
-    //console.log(clients);
+    //delete user from clients
     delete clients[socket.id];
     calcConnectedClients();
   });

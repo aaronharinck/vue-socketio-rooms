@@ -31,6 +31,12 @@
         @click="joinRoom(room.name)"
       >
         {{ room.name }}
+        <!-- room users -->
+        <!-- <span v-for="user in Object.values(room.users)" :key="user">
+          {{ " " + user }}
+        </span> -->
+        <!-- show amount of users -->
+        <p>{{ Object.values(room.users).length }} / 8</p>
       </div>
     </div>
   </div>
