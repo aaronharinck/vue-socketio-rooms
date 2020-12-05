@@ -129,8 +129,8 @@ export default {
       this.rooms = rooms;
     },
     //You can create a room by letting someone join a room which does not exist
-    createRoom(roomName) {
-      this.socket.emit("createRoom", roomName);
+    createRoom() {
+      this.socket.emit("createRoom");
     },
     //Join a room that already exists
     joinRoom(roomName) {

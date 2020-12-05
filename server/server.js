@@ -71,17 +71,17 @@ io.on("connection", socket => {
   };
 
   //create a room
-  socket.on("createRoom", roomName => {
+  socket.on("createRoom", () => {
     //stop creation of extra rooms when user is already in one, or if user is not logged in
     if (socket.connectedRoom || !socket.username) {
-      return console.log(`already linked to a room or user is not logged in`);
+      console.log(`already linked to a room or user is not logged in`);
+      return socket.emit("receiveFromServer", "error creating rooms");
     }
-
     //get a randomRoomName
-    roomName = GetRandom.randomRoomName(rooms);
+    let roomName = GetRandom.randomRoomName(rooms);
     console.log(`Current room count: ${Object.keys(rooms).length}`);
 
-    //check if the room does not already exist
+    //check if the room does not already exist (this normally can't happen because randomRoomName should give a unique name)
     if (rooms[roomName]) {
       console.log("failed to create new room, it already exists");
       // emit an error
@@ -107,11 +107,6 @@ io.on("connection", socket => {
     console.log(socket.connectedRoom);
     console.log("-----");
 
-    /* view all the rooms
-    console.log(rooms);
-    console.log(io.sockets.adapter.rooms);
-    */
-
     //emit an event that we created a room to the creator
     //this should redirect the user to the created room in front-end
     socket.emit("createdRoom", roomName);
@@ -128,16 +123,52 @@ io.on("connection", socket => {
     if (roomName in rooms && socket.username) {
       console.log(socket.rooms);
       //check if user is already connected to another room
-      if (socket.connectedRoom) {
+      if (socket.connectedRoom && socket.connectedRoom.name !== roomName) {
         console.log(
           `already connected to another room: ${
             Object.values(socket.connectedRoom)[0]
           }`
         );
-        // leave the previous room
-        socket.leave(Object.values(socket.connectedRoom)[0]);
+        // console.log("socket.connectedRoom.name");
+        // console.log(socket.connectedRoom.name);
+        // console.log("socket.rooms");
+        // console.log(socket.rooms);
+        socket.leave(socket.connectedRoom.name);
+        // console.log("socket.rooms after leave");
+        // console.log(socket.rooms);
+        // leave rooms object
+        // console.log(`--ROOMS--${socket.connectedRoom.name}`);
+        // console.log(rooms);
+        delete rooms[socket.connectedRoom.name].users[socket.id];
+        // console.log("--ROOMS AFTER DELETE--");
+        // console.log(rooms);
+        if (Object.keys(rooms[socket.connectedRoom.name].users).length === 0) {
+          delete rooms[socket.connectedRoom.name];
+          //because a room was deleted, send an updated rooms event
+          io.emit("allRooms", rooms);
+        }
+
+        // leave the previous room(s)
+        // getUserRooms(socket).forEach(userRoom => {
+        //   console.log(`${socket.id} has left ${userRoom}`);
+        //   //delete user from rooms object
+        //   delete rooms[userRoom].users[socket.id];
+        //   //delete room if there are 0 users
+        //   if (Object.keys(rooms[userRoom].users).length === 0) {
+        //     delete rooms[userRoom];
+        //     //because a room was deleted, send an updated rooms event
+        //     io.emit("allRooms", rooms);
+        //   }
+        // });
+        /*  rooms[roomName].users[socket.id] = socket.username;
+        //create a rooms property to keep track of user rooms
+        socket.connectedRoom = rooms[roomName];
+        clients[socket.id].connectedRoom = rooms[roomName]; */
+
+        //socket.leave(Object.values(socket.connectedRoom)[0]);
         delete socket.connectedRoom;
         delete clients[socket.id].connectedRoom;
+        io.emit("allRooms", rooms);
       }
       console.log(socket.rooms);
       socket.join(roomName);
@@ -149,11 +180,13 @@ io.on("connection", socket => {
         "roomEntered",
         `${socket.username} has joined ${roomName}`
       );
+      console.log("rooms:");
       console.log(rooms);
-      return socket.emit("joinedRoom", roomName);
+      socket.emit("joinedRoom", roomName);
     } else {
-      return socket.emit("err", `Can't find room ${roomName}`);
+      socket.emit("err", `Can't find room ${roomName}`);
     }
+    io.emit("allRooms", rooms);
   });
 
   //communicate with the room only (send message with name that comes from socket.id)
@@ -276,6 +309,7 @@ io.on("connection", socket => {
     //delete user from clients
     delete clients[socket.id];
     calcConnectedClients();
+    io.emit("allRooms", rooms);
   });
 
   //turns
