@@ -38,9 +38,9 @@ const createRoom = room => {};
 const calcConnectedClients = () => {
   let nameSummary = [];
   Object.values(clients).forEach(client => {
-    client.name ? nameSummary.push(client.name) : "";
+    client.username ? nameSummary.push(client.username) : "";
   });
-  console.log(nameSummary);
+  console.log(`Connected users: ${nameSummary}`);
   io.emit("connectedClients", nameSummary);
 };
 
@@ -103,25 +103,18 @@ io.on("connection", socket => {
     socket.connectedRoom = rooms[roomName];
     clients[socket.id].connectedRoom = rooms[roomName];
 
-    console.log("-----");
-    console.log(socket.connectedRoom);
-    console.log("-----");
-
     //emit an event that we created a room to the creator
     //this should redirect the user to the created room in front-end
     socket.emit("createdRoom", roomName);
 
     //because a new room was created, send an event with updated rooms
     io.emit("allRooms", rooms);
-
-    console.log(rooms[roomName]);
   });
 
   //join a room
   socket.on("joinRoom", roomName => {
     //check if room already exsists and if user is logged in
     if (roomName in rooms && socket.username) {
-      console.log(socket.rooms);
       //check if user is already connected to another room
       if (socket.connectedRoom && socket.connectedRoom.name !== roomName) {
         console.log(
@@ -129,23 +122,12 @@ io.on("connection", socket => {
             Object.values(socket.connectedRoom)[0]
           }`
         );
-        // console.log("socket.connectedRoom.name");
-        // console.log(socket.connectedRoom.name);
-        // console.log("socket.rooms");
-        // console.log(socket.rooms);
 
         //leave previous connected room with socket.io
         socket.leave(socket.connectedRoom.name);
-        // console.log("socket.rooms after leave");
-        // console.log(socket.rooms);
-        // leave rooms object
-        // console.log(`--ROOMS--${socket.connectedRoom.name}`);
-        // console.log(rooms);
 
         //delete from our own rooms object
         delete rooms[socket.connectedRoom.name].users[socket.id];
-        // console.log("--ROOMS AFTER DELETE--");
-        // console.log(rooms);
 
         //if the previous connected room is empty, delete the room
         if (Object.keys(rooms[socket.connectedRoom.name].users).length === 0) {
@@ -154,28 +136,8 @@ io.on("connection", socket => {
           io.emit("allRooms", rooms);
         }
 
-        // leave the previous room(s)
-        // getUserRooms(socket).forEach(userRoom => {
-        //   console.log(`${socket.id} has left ${userRoom}`);
-        //   //delete user from rooms object
-        //   delete rooms[userRoom].users[socket.id];
-        //   //delete room if there are 0 users
-        //   if (Object.keys(rooms[userRoom].users).length === 0) {
-        //     delete rooms[userRoom];
-        //     //because a room was deleted, send an updated rooms event
-        //     io.emit("allRooms", rooms);
-        //   }
-        // });
-        /*  rooms[roomName].users[socket.id] = socket.username;
-        //create a rooms property to keep track of user rooms
-        socket.connectedRoom = rooms[roomName];
-        clients[socket.id].connectedRoom = rooms[roomName]; */
-
-        //socket.leave(Object.values(socket.connectedRoom)[0]);
-
         //delete our connectedRoom attribute
         delete socket.connectedRoom;
-        console.log(socket.connectedRoom);
 
         //delete from our clients object
         delete clients[socket.id].connectedRoom;
@@ -183,9 +145,7 @@ io.on("connection", socket => {
       }
 
       //join a new room
-      console.log(socket.rooms);
       socket.join(roomName);
-      console.log(socket.rooms);
       console.log(`${socket.username} joined ${roomName}`);
 
       //add joined user to our rooms object
@@ -199,8 +159,6 @@ io.on("connection", socket => {
       socket.connectedRoom = rooms[roomName];
       clients[socket.id].connectedRoom = rooms[roomName];
 
-      console.log("rooms:");
-      console.log(rooms);
       socket.emit("joinedRoom", roomName);
     } else {
       return socket.emit("err", `Can't find room ${roomName}`);
@@ -215,16 +173,6 @@ io.on("connection", socket => {
       name: rooms[roomName].users[socket.id],
     });
   });
-
-  //join a room (if rooms was an array)
-  // socket.on("joinRoom", roomName => {
-  //   if (rooms.includes(roomName)) {
-  //     socket.join(roomName);
-  //     return socket.emit("joinedRoom", roomName);
-  //   } else {
-  //     return socket.emit("err", `Can't find room ${roomName}`);
-  //   }
-  // });
 
   // When a Vue client mounts get a message with the client id from the client.
   socket.on("establishedConnection", message => {
@@ -273,7 +221,7 @@ io.on("connection", socket => {
     for (const socketId in clients) {
       if (clients.hasOwnProperty(socketId)) {
         const otherClient = clients[socketId];
-        if (otherClient.name === name) {
+        if (otherClient.username === name) {
           nameInUse = true;
         }
       }
@@ -284,11 +232,15 @@ io.on("connection", socket => {
     }
 
     //Pass name to clients and show users
-    clients[socket.id].name = name;
+    clients[socket.id].username = name;
     console.log(clients[socket.id]);
     // You can also add an username attribute to the socket connection instance
     socket.username = name;
-    console.log(`Socket.username: ${socket.username}`);
+    console.log(
+      `Socket.username: ${socket.username} ${(clients[
+        socket.id
+      ].username = name)}`
+    );
     socket.emit("name", clients[socket.id]);
 
     // Get all rooms
@@ -306,7 +258,6 @@ io.on("connection", socket => {
   //remove id if client disconnected
   socket.on("disconnect", () => {
     //remove rooms that client was in
-    console.log(rooms);
     getUserRooms(socket).forEach(roomName => {
       console.log(`${socket.id} has left ${roomName}`);
       //delete user from rooms object
@@ -318,10 +269,9 @@ io.on("connection", socket => {
         io.emit("allRooms", rooms);
       }
     });
-    console.log(rooms);
     console.log(
       `A user (${socket.id} ${
-        clients[socket.id].name ? clients[socket.id].name : ""
+        clients[socket.id].username ? clients[socket.id].username : ""
       }) disconnected `
     );
 
@@ -340,60 +290,4 @@ io.on("connection", socket => {
       `player ${socket.id} has ${turnData.action} ${turnData.value} with randomNum ${randomNum}`
     );
   });
-
-  const test = () => {
-    //   console.log(socket.rooms);
-    //   socket.join("room1");
-    //   console.log(socket.rooms);
-    //   // each client gets an id from socket.io, we can use it here
-    //   clients[socket.id] = {
-    //     id: socket.id,
-    //   };
-    //   // delete the id on disconnect
-    //   socket.on("disconnect", () => {
-    //     console.log(`A user (${clients[socket.id].name}) disconnected `);
-    //     delete clients[socket.id];
-    //   });
-    //   // listen for login (name)
-    //   socket.on("name", name => {
-    //     console.log(`unSanitized name: ${name}`);
-    //     if (name) {
-    //       // trim unwanted characters
-    //       name = name.match(/[A-Z-a-z-0-9]/g);
-    //       // join the array of remaining letters
-    //       name = name.join("");
-    //       console.log(`Sanitized name: ${name}`);
-    //     }
-    //     if (name.length === 0) {
-    //       socket.emit("name-error", "please enter a valid name");
-    //       return;
-    //     }
-    //     // check if name is not already in use
-    //     let nameInUse = false;
-    //     for (const socketId in clients) {
-    //       if (clients.hasOwnProperty(socketId)) {
-    //         const otherClient = clients[socketId];
-    //         if (otherClient.name === name) {
-    //           nameInUse = true;
-    //         }
-    //       }
-    //     }
-    //     if (nameInUse) {
-    //       socket.emit("name-error", "name is already in use");
-    //       return;
-    //     }
-    //     clients[socket.id].name = name;
-    //     console.log(clients[socket.id]);
-    //     socket.emit("name", clients[socket.id]);
-    //   });
-    //   // listen for msg
-    //   socket.on("chat message", message => {
-    //     console.log(`received: ${message}`);
-    //     // send message back to everyone who is connected
-    //     if (clients[socket.id].name) {
-    //       io.sockets.emit("chat message", clients[socket.id], message);
-    //       io.emit("currentTime", currentTime.getCurrentTime(Date.now()));
-    //     }
-    //   });
-  };
 });
