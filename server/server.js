@@ -6,7 +6,7 @@ const http = require("http").Server(expressApp); // http is part of node but we 
 // const io = require("socket.io")(http) does not work anymore, you need to handle CORS (if you want a seperated back & front-end);
 const io = require("socket.io")(http, {
   cors: {
-    origin: ["http://localhost:8080", "http://localhost:8081"], // or * for allowing all sites
+    origin: ["http://localhost:8080", process.env.ORIGIN], // or * for allowing all sites
     methods: ["GET", "POST"],
   },
 });
