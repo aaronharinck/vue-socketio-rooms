@@ -1,28 +1,51 @@
 import { createRouter, createWebHistory } from "vue-router";
 
 import NotFound from "./views/NotFound.vue";
-import Game from "./views/Game.vue";
 import Rooms from "./views/Rooms.vue";
+import Room from "./views/Room.vue";
+import Game from "./views/Game.vue";
 import Home from "./views/Home.vue";
+import LoginUsername from "./views/LoginUsername.vue";
 
 const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", name: "home", component: Home },
     {
+      path: "/login-username",
+      name: "loginUsername",
+      component: LoginUsername,
+    },
+    {
       name: "rooms",
       path: "/rooms",
-      meta: { needsAuth: true },
+      // meta: { needsAuth: true },
       components: { default: Rooms },
+      // children: [
+      //   {
+      //     name: "room",
+      //     path: ":room",
+      //     component: Room,
+      //     props: true,
+      //   },
+      // ],
+    },
+    { name: "room", path: "/rooms/:room", component: Room, props: true },
+    {
+      name: "game",
+      path: "/game",
+      // meta: { needsAuth: true },
+      components: { default: Game },
       children: [
         {
-          name: "game",
-          path: ":game",
+          name: "gameId",
+          path: ":gameId",
           component: Game,
           props: true,
         },
       ],
     },
+
     { path: "/:notFound(.*)", component: NotFound },
   ],
 });
@@ -33,7 +56,7 @@ router.beforeEach((to, from, next) => {
   console.log(to, from);
   if (to.meta.needsAuth) {
     console.log("Needs auth!");
-    next();
+    next({ name: "loginUsername" });
   } else {
     next();
   }

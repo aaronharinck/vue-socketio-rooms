@@ -18,7 +18,6 @@
       </form>
     </div>
     <div v-if="loggedIn">
-      <p>{{ turn }}, {{ enteredName }}</p>
       <ul>
         <li v-for="clientName in clientNames" :key="clientName">
           {{ clientName }}
@@ -53,13 +52,13 @@
 </template>
 
 <script>
-import io from "socket.io-client";
+// import io from "socket.io-client";
 export default {
-  name: "Chat",
+  inject: ["socket"],
+  name: "Rooms",
   data() {
     return {
-      socket: {},
-      turn: "It's not your turn",
+      //   socket: {},
       loggedIn: false,
       enteredName: "",
       id: "",
@@ -72,10 +71,10 @@ export default {
   props: {
     msg: String,
   },
-  created() {
-    // when created - connect socket.io
-    this.socket = io.connect(`localhost:3000`);
-  },
+  //   created() {
+  //     // when created - connect socket.io
+  //     this.socket = io.connect(`localhost:3000`);
+  //   },
   mounted() {
     //receive msg from server
     this.socket.on("receiveFromServer", serverMsg => {
@@ -96,11 +95,6 @@ export default {
     //send connection msg to server
     this.socket.emit("establishedConnection", `hi from Vue!`);
 
-    // check for turn
-    this.socket.on("getTurn", receivedData => {
-      this.checkForTurn(receivedData);
-    });
-
     // show connected clients
     this.socket.on("connectedClients", clientNames => {
       this.showConnectedClients(clientNames);
@@ -113,6 +107,7 @@ export default {
 
     this.socket.on("joinedRoom", roomName => {
       this.connectedRoom = roomName;
+      this.$router.push({ name: "room", params: { room: roomName } });
     });
 
     // Room specific emits
@@ -128,9 +123,6 @@ export default {
       this.socket.emit("msg", `${msg}`);
       let turnData = { action: "played", value: "Hearts" };
       this.socket.emit("sendTurn", turnData);
-    },
-    checkForTurn(receivedData) {
-      console.log("test " + receivedData);
     },
     showConnectedClients(clientNames) {
       this.clientNames = clientNames;
