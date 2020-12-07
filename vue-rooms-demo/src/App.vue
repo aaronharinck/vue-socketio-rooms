@@ -1,17 +1,20 @@
 <template>
   <main>
-    <Chat msg="Pass the room" />
+    <main>
+      <router-view></router-view>
+    </main>
+    <!-- <Rooms msg="Pass the room" /> -->
   </main>
 </template>
 
 <script>
-import Chat from "./components/Chat.vue";
+// import Rooms from "./views/Rooms.vue";
 
 export default {
   name: "App",
-  components: {
-    Chat,
-  },
+  // components: {
+  //   Rooms,
+  // },
 };
 </script>
 

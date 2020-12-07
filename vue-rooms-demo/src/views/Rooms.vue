@@ -1,11 +1,21 @@
 <template>
   <div class="hello">
+    <router-view></router-view>
     <h1>{{ connectedRoom }}</h1>
     <div v-if="!loggedIn">
       <p>You are not logged in! Please Login {{ enteredName }}</p>
       <p v-if="loginError">{{ loginError }}</p>
-      <input type="text" @keyup.enter="logIn" v-model="enteredName" />
-      <button @click="logIn">Connect</button>
+      <form @submit.prevent="">
+        <label for="user-name">Username</label>
+        <input
+          id="user-name"
+          name="user-name"
+          type="text"
+          @keyup.enter="logIn"
+          v-model.trim="enteredName"
+        />
+        <button @click="logIn">Connect</button>
+      </form>
     </div>
     <div v-if="loggedIn">
       <p>{{ turn }}, {{ enteredName }}</p>
