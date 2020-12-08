@@ -15,6 +15,7 @@ const port = process.env.PORT || 3000;
 // load other scripts
 const Validate = require("./s_scripts/validate.js");
 const GetRandom = require("./s_scripts/getRandom.js");
+const Game = require("./s_scripts/game.js");
 
 http.listen(port, () => {
   console.log(`Listening at port ${port}...`);
@@ -255,7 +256,7 @@ io.on("connection", socket => {
   /*-- Game --*/
   //get all users
   socket.on("getRoomUsers", roomName => {
-    io.in(roomName).emit("receiveFromServer", roomName);
+    io.in(roomName).emit("getRoomUsers", rooms[roomName].users);
   });
 
   // player clicked "start game" in a room
@@ -264,10 +265,29 @@ io.on("connection", socket => {
     if (roomName && rooms[roomName] && socket.username) {
       console.log(`player started ${roomName}`);
       io.in(roomName).emit("startGame", roomName);
+      // start the game
+      setTimeout(() => {
+        /* handle the game logic */
+        // emit an event that starts the game
+        io.in(roomName).emit("gameReady", rooms[roomName].users);
+        let users = Object.keys(rooms[roomName].users);
+        console.log(rooms[roomName].users);
+        console.log(users);
+        // get a random deck of cards
+        let shuffledGameDeck = Game.getShuffledDeck();
+        io.in(roomName).emit("cards", shuffledGameDeck);
+        // split the deck evenly between players
+        let splitUpDeck = Game.splitUp(shuffledGameDeck, users.length);
+        console.log(splitUpDeck);
+        users.forEach(userId => {
+          //give each player a deck
+          clients[userId].cards = splitUpDeck.shift();
+          console.log(clients[userId]);
+        });
+      }, 4000);
+      console.log("this should come after the cards, but doesn't");
     }
   });
-
-  // shuffle & distribute cards
 
   //turns
   socket.on("sendTurn", turnData => {

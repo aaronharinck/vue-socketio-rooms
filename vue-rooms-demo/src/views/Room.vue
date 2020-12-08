@@ -3,6 +3,9 @@
     <h3>President: Room {{ room }}</h3>
     <button @click="startGame(room)">Start game</button>
     <p>Share this link to invite your friends! <br />{{ `${shareLink}` }}</p>
+    <ul>
+      <li v-for="user in users" :key="user">{{ user }}</li>
+    </ul>
   </div>
 </template>
 
@@ -18,15 +21,23 @@ export default {
   data() {
     return {
       shareLink: window.location,
+      users: {},
     };
   },
   mounted() {
     this.socket.emit("getRoomUsers", this.room);
     console.log(`the room is ${this.room}`);
+
     // // when created - connect socket.io
     // this.socket = io.connect(`localhost:3000`);
     this.socket.on("receiveFromServer", serverMsg => {
       console.log(`received from server: ahaha ${serverMsg}`);
+    });
+
+    this.socket.on("getRoomUsers", users => {
+      this.users = users;
+      console.log(users);
+      console.log(users.name);
     });
 
     //server could send a startGame event

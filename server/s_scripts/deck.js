@@ -15,7 +15,7 @@ const VALUES = [
   "K",
 ];
 
-export default class Deck {
+class Deck {
   // pass cards into constructor (could be 52 cards or even 2 x 54,... depending on the game)
   constructor(cards = newDeck()) {
     this.cards = cards;
@@ -52,7 +52,7 @@ export default class Deck {
   }
 }
 
-export class Card {
+class Card {
   constructor(suit, value) {
     this.suit = suit;
     this.value = value;
@@ -72,3 +72,5 @@ const newDeck = () => {
     });
   });
 };
+
+module.exports = { Deck };
