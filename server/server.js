@@ -70,6 +70,7 @@ io.on("connection", socket => {
     id: socket.id,
   };
 
+  /*-- Rooms --*/
   //create a room
   socket.on("createRoom", () => {
     //stop creation of extra rooms when user is already in one, or if user is not logged in
@@ -184,13 +185,9 @@ io.on("connection", socket => {
     "this msg is from the server, you are connected"
   );
 
-  socket.on("msg", message => {
-    console.log(message + "io");
-  });
-
   // When the button is pressed send a msg to the client who pressed, and a message to all connected clients
   socket.on("msg", message => {
-    console.log(message + " socket");
+    console.log(message);
     socket.emit("receiveFromServer", message);
     io.emit("receiveFromServer", message + " to all clients");
   });
@@ -255,7 +252,35 @@ io.on("connection", socket => {
   //   socket.emit("name", clients[socket.id]);
   // }
 
-  //remove id if client disconnected
+  /*-- Game --*/
+  //get all users
+  socket.on("getRoomUsers", roomName => {
+    io.in(roomName).emit("receiveFromServer", roomName);
+  });
+
+  // player clicked "start game" in a room
+  socket.on("startGame", roomName => {
+    console.log(`player wants ${roomName} to start!`);
+    if (roomName && rooms[roomName] && socket.username) {
+      console.log(`player started ${roomName}`);
+      io.in(roomName).emit("startGame", roomName);
+    }
+  });
+
+  // shuffle & distribute cards
+
+  //turns
+  socket.on("sendTurn", turnData => {
+    console.log(turnData);
+    console.log(`user-action: ${turnData.action}`);
+    io.emit(
+      "getTurn",
+      `player ${socket.id} has ${turnData.action} ${turnData.value} with randomNum ${randomNum}`
+    );
+  });
+
+  /*-- DISCONNECT --*/
+  //remove socket if client disconnected
   socket.on("disconnect", () => {
     //remove rooms that client was in
     getUserRooms(socket).forEach(roomName => {
@@ -279,15 +304,5 @@ io.on("connection", socket => {
     delete clients[socket.id];
     calcConnectedClients();
     io.emit("allRooms", rooms);
-  });
-
-  //turns
-  socket.on("sendTurn", turnData => {
-    console.log(turnData);
-    console.log(`user-action: ${turnData.action}`);
-    io.emit(
-      "getTurn",
-      `player ${socket.id} has ${turnData.action} ${turnData.value} with randomNum ${randomNum}`
-    );
   });
 });

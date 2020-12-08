@@ -34,6 +34,7 @@ const router = createRouter({
     {
       name: "game",
       path: "/game",
+      props: true,
       // meta: { needsAuth: true },
       components: { default: Game },
       children: [
