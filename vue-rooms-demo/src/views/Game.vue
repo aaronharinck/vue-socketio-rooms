@@ -7,18 +7,25 @@
         {{ connectedUser }}
       </li>
     </ul>
+    <div class="board">
+      <button @click="confirmTurn()">confirm turn</button>
+      <div
+        v-for="playedCard in playedCards"
+        :key="playedCard.suit + playedCard.value"
+      >
+        {{ playedCard.suit }}{{ playedCard.value }}
+      </div>
+    </div>
     <p>Randomly shuffled cards:</p>
-    <ul v-if="cards">
-      <li v-for="card in cards" :key="card">
+    <div v-if="cards">
+      <div
+        v-for="card in cards"
+        :key="card.suit + card.value"
+        @click="playCard(card)"
+      >
         {{ card.suit }} {{ card.value }}
-      </li>
-    </ul>
-    <p>----</p>
-    <ul v-if="cards">
-      <li v-for="card in cards" :key="card">
-        {{ card }}
-      </li>
-    </ul>
+      </div>
+    </div>
     <!-- <p>{{ turn }} {{ enteredName }}</p> -->
   </div>
 </template>
@@ -30,6 +37,7 @@ export default {
     return {
       connectedUsers: {},
       cards: [],
+      playedCards: [],
     };
   },
   mounted() {
@@ -48,11 +56,25 @@ export default {
       console.log(cards);
       this.cards = cards;
     });
+
+    // play cards
+    this.socket.on("playedCard", (player, card) => {
+      console.log(`${player} played ${card.suit}${card.value}`);
+    });
   },
   methods: {
-    // checkForTurn(receivedData) {
-    //   console.log("test " + receivedData);
-    // },
+    //user plays a card
+    playCard(card) {
+      this.socket.emit("playCard", this.$route.params.gameId, card);
+    },
+    // confirm turn and send to server
+    confirmTurn() {
+      this.socket.emit(
+        "confirmTurn",
+        this.$route.params.gameId,
+        this.playedCards
+      );
+    },
   },
 };
 </script>

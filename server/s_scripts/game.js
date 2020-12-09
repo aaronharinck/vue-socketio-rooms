@@ -129,6 +129,7 @@ const getShuffledDeck = () => {
   return deck.cards;
 };
 
+// https://stackoverflow.com/questions/8188548/splitting-a-js-array-into-n-arrays/51514813#51514813
 const splitUp = (arr, n) => {
   let rest = arr.length % n,
     restUsed = rest,

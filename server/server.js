@@ -58,6 +58,37 @@ const getUserRooms = socket => {
   }, []);
 };
 
+/*--- Game Functions ---*/
+const nextTurn = room => {
+  /* roomObj: {
+  name: 'George-Bush-Senior-CQTQP',
+  users: {
+    qv0450HiS1GwD2wFAAAF: 'Aaron',
+    wT3B21u2AF77WBshAAAJ: 'Jef',
+    'kpM85q-Uskq6Zy1YAAAL': 'Dirk'
+  } } */
+
+  // check for currentTurn
+  if (room.currentTurn || room.currentTurn === 0) {
+    // increment 1 to the currentTurn
+    room.currentTurn++;
+    // trace the turn to a player (e.g. turn 5 with 4 players => playerTurn will be 0 again)
+    console.log(currentTurn);
+    room.playerTurn =
+      room.users[currentTurn++ % Object.keys(room.users).length];
+    console.log(room.playerTurn);
+  }
+  console.log(Object.keys(room.users));
+  console.log(Object.keys(room.users).length);
+  console.log(Object.keys(room.users)[0]);
+
+  // or create turn
+
+  console.log("***");
+  console.log(room);
+  console.log("***");
+};
+
 /*--- SOCKET.IO ---*/
 io.on("connection", socket => {
   //log if a user connected
@@ -273,19 +304,36 @@ io.on("connection", socket => {
         let users = Object.keys(rooms[roomName].users);
         console.log(rooms[roomName].users);
         console.log(users);
+
         // get a random deck of cards
         let shuffledGameDeck = Game.getShuffledDeck();
         // split the deck evenly between players
         let splitUpDeck = Game.splitUp(shuffledGameDeck, users.length);
+        //give each player cards from the deck
         users.forEach(userId => {
-          //give each player cards from the deck
           clients[userId].cards = splitUpDeck.shift();
           //send specific cards to a specific player
           io.in(clients[userId].id).emit("cards", clients[userId].cards);
         });
+        // initiate first turn
+        nextTurn(rooms[roomName]);
       }, 4000);
       console.log("this should come after the cards, but doesn't");
     }
+  });
+
+  socket.on("confirmTurn", (roomName, playedCards) => {
+    if (roomName && rooms[roomName].playerTurn === socket.username) {
+      console.log("played cards: " + playedCards);
+    }
+  });
+
+  // player played a card
+  socket.on("playCard", (roomName, card) => {
+    console.log(socket.username);
+    console.log(roomName);
+    console.log(card);
+    io.in(roomName).emit("playedCard", socket.username, card);
   });
 
   //turns
