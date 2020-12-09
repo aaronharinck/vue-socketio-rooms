@@ -275,14 +275,13 @@ io.on("connection", socket => {
         console.log(users);
         // get a random deck of cards
         let shuffledGameDeck = Game.getShuffledDeck();
-        io.in(roomName).emit("cards", shuffledGameDeck);
         // split the deck evenly between players
         let splitUpDeck = Game.splitUp(shuffledGameDeck, users.length);
-        console.log(splitUpDeck);
         users.forEach(userId => {
-          //give each player a deck
+          //give each player cards from the deck
           clients[userId].cards = splitUpDeck.shift();
-          console.log(clients[userId]);
+          //send specific cards to a specific player
+          io.in(clients[userId].id).emit("cards", clients[userId].cards);
         });
       }, 4000);
       console.log("this should come after the cards, but doesn't");
