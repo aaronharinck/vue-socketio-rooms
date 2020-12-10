@@ -72,7 +72,6 @@ const nextTurn = (room, socket) => {
   console.log(socket.username);
   console.log(room.currentTurn);
   console.log(room.playerTurn);
-  console.log(room);
   console.log(room.users.hasOwnProperty(socket.id));
 
   // check if there is a currentTurn property & requested by the previous player
@@ -94,23 +93,16 @@ const nextTurn = (room, socket) => {
     room.currentTurn = 0;
     console.log(room.users);
     console.log(room.currentTurn);
-    room.playerTurn = Object.keys(room.users)[room.currentTurn];
+    let usersArr = Object.keys(room.users);
+    let newTurnUserArrPos = room.currentTurn++ % usersArr.length;
+    room.playerTurn = usersArr[newTurnUserArrPos];
+    //room.playerTurn = Object.keys(room.users)[room.currentTurn];
     console.log(
       `${room.currentTurn} is the turn, ${room.playerTurn} can start`
     );
     return room.playerTurn;
   }
-
-  console.log(`__________`);
-  console.log(Object.keys(room.users));
-  console.log(Object.keys(room.users).length);
-  console.log(Object.keys(room.users)[0]);
-
-  // or create turn
-
-  console.log("***");
-  console.log(room);
-  console.log("***");
+  console.log("can't trigger nextTurn: Room or user not found");
 };
 
 /*--- SOCKET.IO ---*/
@@ -340,9 +332,7 @@ io.on("connection", socket => {
           io.in(clients[userId].id).emit("cards", clients[userId].cards);
         });
         // initiate first turn
-        socket
-          .to(nextTurn(rooms[roomName], socket))
-          .emit("turn", "it's your turn!");
+        io.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
       }, 4000);
       console.log("this should come after the cards, but doesn't");
     }
@@ -352,17 +342,12 @@ io.on("connection", socket => {
     if (
       roomName &&
       rooms[roomName].playerTurn &&
-      rooms[roomName].playerTurn === socket.username
+      rooms[roomName].playerTurn === socket.id
     ) {
       console.log("played cards: " + playedCards);
-      nextTurn(rooms[roomName], socket);
+      console.log(playedCards);
+      socket.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
     }
-    console.log("xxxxx");
-    console.log(rooms[roomName]);
-    console.log(socket.username);
-    socket
-      .to(nextTurn(rooms[roomName], socket))
-      .emit("turn", "it's your turn!");
   });
 
   // player played a card

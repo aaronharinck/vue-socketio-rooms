@@ -1,14 +1,14 @@
 <template>
   <div>
     <h3>Game {{ $route.params.gameId }}</h3>
-    <p>Game is loading...</p>
+    <p v-if="!cards">Game is loading...</p>
     <ul v-if="connectedUsers">
       <li v-for="connectedUser in connectedUsers" :key="connectedUser">
         {{ connectedUser }}
       </li>
     </ul>
     <div class="board">
-      <button @click="confirmTurn()">confirm turn</button>
+      <button v-if="yourTurn" @click="confirmTurn()">confirm turn</button>
       <div
         v-for="playedCard in playedCards"
         :key="playedCard.suit + playedCard.value"
@@ -38,6 +38,8 @@ export default {
       connectedUsers: {},
       cards: [],
       playedCards: [],
+      turn: "",
+      yourTurn: false,
     };
   },
   mounted() {
@@ -66,12 +68,25 @@ export default {
     this.socket.on("playedCard", (player, card) => {
       console.log(`${player} played ${card.suit}${card.value}`);
     });
+
+    this.socket.on("turn", turnInfo => {
+      this.getTurn(turnInfo);
+    });
   },
   methods: {
     //user plays a card
     playCard(card) {
       this.socket.emit("playCard", this.$route.params.gameId, card);
+      this.playedCards.push(card);
     },
+
+    // get turn
+    getTurn(turnInfo) {
+      if (turnInfo === "your turn") {
+        this.yourTurn = true;
+      }
+    },
+
     // confirm turn and send to server
     confirmTurn() {
       this.socket.emit(
@@ -79,6 +94,8 @@ export default {
         this.$route.params.gameId,
         this.playedCards
       );
+      this.yourTurn = false;
+      this.playedCards = [];
     },
   },
 };
