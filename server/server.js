@@ -59,7 +59,7 @@ const getUserRooms = socket => {
 };
 
 /*--- Game Functions ---*/
-const nextTurn = room => {
+const nextTurn = (room, socket) => {
   /* roomObj: {
   name: 'George-Bush-Senior-CQTQP',
   users: {
@@ -68,16 +68,40 @@ const nextTurn = room => {
     'kpM85q-Uskq6Zy1YAAAL': 'Dirk'
   } } */
 
-  // check for currentTurn
-  if (room.currentTurn || room.currentTurn === 0) {
-    // increment 1 to the currentTurn
-    room.currentTurn++;
+  console.log("___socket.username____");
+  console.log(socket.username);
+  console.log(room.currentTurn);
+  console.log(room.playerTurn);
+  console.log(room);
+  console.log(room.users.hasOwnProperty(socket.id));
+
+  // check if there is a currentTurn property & requested by the previous player
+  if (
+    (room.currentTurn || room.currentTurn === 0) &&
+    room.users.hasOwnProperty(socket.id)
+  ) {
+    let usersArr = Object.keys(room.users);
     // trace the turn to a player (e.g. turn 5 with 4 players => playerTurn will be 0 again)
-    console.log(currentTurn);
-    room.playerTurn =
-      room.users[currentTurn++ % Object.keys(room.users).length];
+    let newTurnUserArrPos = room.currentTurn++ % usersArr.length;
+    // set the playerTurn to the next player
+    room.playerTurn = usersArr[newTurnUserArrPos];
+    console.log("-----");
     console.log(room.playerTurn);
+    console.log(`${room.currentTurn} is the turn, ${room.playerTurn} can play`);
+    return room.playerTurn;
+  } else if (room && room.users.hasOwnProperty(socket.id)) {
+    // start turns
+    room.currentTurn = 0;
+    console.log(room.users);
+    console.log(room.currentTurn);
+    room.playerTurn = Object.keys(room.users)[room.currentTurn];
+    console.log(
+      `${room.currentTurn} is the turn, ${room.playerTurn} can start`
+    );
+    return room.playerTurn;
   }
+
+  console.log(`__________`);
   console.log(Object.keys(room.users));
   console.log(Object.keys(room.users).length);
   console.log(Object.keys(room.users)[0]);
@@ -316,16 +340,29 @@ io.on("connection", socket => {
           io.in(clients[userId].id).emit("cards", clients[userId].cards);
         });
         // initiate first turn
-        nextTurn(rooms[roomName]);
+        socket
+          .to(nextTurn(rooms[roomName], socket))
+          .emit("turn", "it's your turn!");
       }, 4000);
       console.log("this should come after the cards, but doesn't");
     }
   });
 
   socket.on("confirmTurn", (roomName, playedCards) => {
-    if (roomName && rooms[roomName].playerTurn === socket.username) {
+    if (
+      roomName &&
+      rooms[roomName].playerTurn &&
+      rooms[roomName].playerTurn === socket.username
+    ) {
       console.log("played cards: " + playedCards);
+      nextTurn(rooms[roomName], socket);
     }
+    console.log("xxxxx");
+    console.log(rooms[roomName]);
+    console.log(socket.username);
+    socket
+      .to(nextTurn(rooms[roomName], socket))
+      .emit("turn", "it's your turn!");
   });
 
   // player played a card

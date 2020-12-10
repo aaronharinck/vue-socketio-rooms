@@ -51,6 +51,11 @@ export default {
       this.connectedUsers = receivedUsers;
     });
 
+    // get turn
+    this.socket.on("turn", msg => {
+      console.log(msg);
+    });
+
     // get cards
     this.socket.on("cards", cards => {
       console.log(cards);
