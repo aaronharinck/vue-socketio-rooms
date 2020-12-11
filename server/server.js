@@ -341,12 +341,25 @@ io.on("connection", socket => {
   socket.on("confirmTurn", (roomName, playedCards) => {
     if (
       roomName &&
+      rooms[roomName] &&
       rooms[roomName].playerTurn &&
       rooms[roomName].playerTurn === socket.id
     ) {
       console.log("played cards: " + playedCards);
       console.log(playedCards);
+      // send turn event to the next player
       socket.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
+      // emit the playedCards for everyone
+      if (playedCards && Object.keys(playedCards).length !== 0) {
+        // keep track of lastPlayedCards (update when new cards got played)
+        console.log("playedCards is truthy: " + playedCards);
+        rooms[roomName].lastPlayedCards = playedCards;
+      }
+      io.in(rooms[roomName].name).emit(
+        "lastPlayedCards",
+        rooms[roomName].lastPlayedCards,
+        socket.username
+      );
     }
   });
 
