@@ -17,13 +17,13 @@
       </div>
       <button v-if="yourTurn" @click="confirmTurn()">confirm turn</button>
       <div
-        v-for="playedCard in playedCards"
-        :key="playedCard.suit + playedCard.value"
+        v-for="ownPlayedCard in ownPlayedCards"
+        :key="ownPlayedCard.suit + ownPlayedCard.value"
       >
-        {{ playedCard.suit }}{{ playedCard.value }}
+        {{ ownPlayedCard.suit }}{{ ownPlayedCard.value }}
       </div>
     </div>
-    <p>Your cards:</p>
+    <p>Your cards: (Required value = {{ requiredCardValue }})</p>
     <div v-if="cards">
       <div
         v-for="(card, index) in cards"
@@ -61,8 +61,9 @@ export default {
       connectedUsers: {},
       gameId: this.$route.params.gameId,
       cards: [],
-      playedCards: [],
+      ownPlayedCards: [],
       lastPlayedCards: [],
+      ownLastPlayedCards: [],
       turn: "",
       yourTurn: false,
     };
@@ -103,26 +104,74 @@ export default {
       this.getTurn(turnInfo);
     });
   },
+  computed: {
+    requiredCardValue() {
+      let minValue;
+      // check if there are lastPlayedCards
+      if (this.lastPlayedCards) {
+        this.lastPlayedCards.forEach(lastPlayedCard => {
+          //check if there already is a minValue
+          minValue ? "" : (minValue = lastPlayedCard.value);
+          //check if minValue needs to be replaced by a higher value
+          CARD_VALUE_MAP[minValue] < CARD_VALUE_MAP[lastPlayedCard.value]
+            ? (minValue = lastPlayedCard.value)
+            : "";
+        });
+      }
+      return minValue;
+    },
+  },
+
   methods: {
     //user plays a card
     playCard(card, index) {
       let validPlay = false;
+      let lastPlayedCardsHighestValue;
+      //let lastPlayedCardValue;
       if (this.yourTurn) {
-        // check if card can be played
-        if (this.lastPlayedCards.length > 0) {
+        // check if it should conform to previously played card(s)
+        if (
+          this.lastPlayedCards &&
+          Object.keys(this.lastPlayedCards.length) > 0
+        ) {
+          console.log(this.lastPlayedCards); // gives a proxy with an empty array
           console.log("there are playedCards");
+
+          // check for the value of the played card
+          this.lastPlayedCards.forEach(lastPlayedCard => {
+            if (
+              !lastPlayedCardsHighestValue ||
+              CARD_VALUE_MAP[lastPlayedCard.value] >=
+                CARD_VALUE_MAP[lastPlayedCardsHighestValue]
+            ) {
+              console.log("lastPlayedCardsHighestValue b4");
+              console.log(lastPlayedCardsHighestValue);
+              console.log(`lastPlayedCard.value: ${lastPlayedCard.value}`);
+              lastPlayedCardsHighestValue = lastPlayedCard.value;
+              console.log(`lastPlayedCardsHighestValue ${lastPlayedCardsHighestValue}$
+                `);
+            }
+          });
+
           this.lastPlayedCards.forEach(lastPlayedCard => {
             console.log(
               `played card: ${card.value}, lastPlayedCard: ${lastPlayedCard.value}`
             );
             // check if the value of the newly played card is valid
             if (
-              CARD_VALUE_MAP[card.value] >=
-                CARD_VALUE_MAP[lastPlayedCard.value] ||
+              (CARD_VALUE_MAP[card.value] >=
+                CARD_VALUE_MAP[lastPlayedCard.value] &&
+                (card.value === lastPlayedCardsHighestValue ||
+                  !lastPlayedCardsHighestValue)) ||
               parseInt(card.value) === 2
             ) {
               validPlay = true;
-              console.log("valid" + card.value + "" + lastPlayedCard.value);
+              console.log(
+                "valid cardValue:" +
+                  card.value +
+                  " lastCardValue:" +
+                  lastPlayedCard.value
+              );
             } else {
               validPlay = false;
             }
@@ -130,13 +179,14 @@ export default {
           if (validPlay) {
             // if valid, remove card from playerDeck
             this.cards.splice(index, 1);
-            this.playedCards.push(card);
+            this.ownPlayedCards.push(card);
             this.socket.emit("playCard", this.gameId, card);
+            //lastPlayedCardValue = card.value;
           }
         } else {
           // if there were no card(s) played last round, play any card
           this.cards.splice(index, 1);
-          this.playedCards.push(card);
+          this.ownPlayedCards.push(card);
           this.socket.emit("playCard", this.gameId, card);
         }
       }
@@ -153,12 +203,13 @@ export default {
     confirmTurn() {
       // check if the amount of played cards is equal or higher
       if (
-        this.lastPlayedCards.length <= this.playedCards.length ||
-        this.playedCards.length === 0
+        !this.lastPlayedCards ||
+        this.lastPlayedCards.length <= this.ownPlayedCards.length ||
+        this.ownPlayedCards.length === 0
       ) {
-        this.socket.emit("confirmTurn", this.gameId, this.playedCards);
+        this.socket.emit("confirmTurn", this.gameId, this.ownPlayedCards);
         this.yourTurn = false;
-        this.playedCards = [];
+        this.ownPlayedCards = [];
       }
     },
   },
