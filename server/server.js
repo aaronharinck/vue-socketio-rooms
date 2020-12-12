@@ -69,10 +69,8 @@ const nextTurn = (room, socket) => {
   } } */
 
   console.log("___socket.username____");
-  console.log(socket.username);
+  console.log(socket.username + " " + room.playerTurn);
   console.log(room.currentTurn);
-  console.log(room.playerTurn);
-  console.log(room.users.hasOwnProperty(socket.id));
 
   // check if there is a currentTurn property & requested by the previous player
   if (
@@ -80,8 +78,10 @@ const nextTurn = (room, socket) => {
     room.users.hasOwnProperty(socket.id)
   ) {
     let usersArr = Object.keys(room.users);
+    console.log(`room.currentTurn: ${room.currentTurn}`);
     // trace the turn to a player (e.g. turn 5 with 4 players => playerTurn will be 0 again)
     let newTurnUserArrPos = room.currentTurn++ % usersArr.length;
+    console.log(`room.currentTurn++: ${room.currentTurn}`);
     // set the playerTurn to the next player
     room.playerTurn = usersArr[newTurnUserArrPos];
     console.log("-----");
@@ -104,6 +104,41 @@ const nextTurn = (room, socket) => {
   }
   console.log("can't trigger nextTurn: Room or user not found");
 };
+
+const checkForNewRound = (room, socket) => {
+  // check how many consecutive passed turns there are
+  if (!room.consecutivePassedTurns) {
+    // if there is no consecutivePassedTurn property, create one
+    room.consecutivePassedTurns = 1;
+  } else {
+    //if there is a consecutivePassedTurns property, increment by 1
+    room.consecutivePassedTurns++;
+  }
+
+  // if every user passed, create a new round
+  if (Object.keys(room.users).length === room.consecutivePassedTurns) {
+    // if there is no lastUserWhoPlayed because nobody played a card & everyone passed, set it to the first user
+    if (!room.lastUserWhoPlayed) {
+      room.lastUserWhoPlayed = Object.keys(room.users)[0];
+    }
+    console.log(`New round required, ${room.lastUserWhoPlayed} can start!`);
+    // reset consectuivePassedRounds, currentTurn & playerTurn
+    room.consecutivePassedTurns = 0;
+    console.log("index lastUserWhoPlayed:");
+    console.log(Object.keys(room.users).indexOf(room.lastUserWhoPlayed.id));
+    room.playerTurn = room.lastUserWhoPlayed.id;
+    // add +1 on currentTurn, because we won't use nextTurn() function to create our first new turn
+    room.currentTurn =
+      Object.keys(room.users).indexOf(room.lastUserWhoPlayed.id) + 1;
+    console.log("room.playerTurn: " + room.playerTurn);
+    console.log("room.currentTurn: " + room.currentTurn);
+
+    // return a value to let the code know a newRound was created and it should give the turn to the lastUserWhoPlayed
+    return room.lastUserWhoPlayed.id;
+  }
+};
+
+const checkForNewGame = () => {};
 
 /*--- SOCKET.IO ---*/
 io.on("connection", socket => {
@@ -339,6 +374,7 @@ io.on("connection", socket => {
   });
 
   socket.on("confirmTurn", (roomName, playedCards) => {
+    // start by verifying incoming event
     if (
       roomName &&
       rooms[roomName] &&
@@ -347,6 +383,45 @@ io.on("connection", socket => {
     ) {
       console.log("played cards: " + playedCards);
       console.log(playedCards);
+
+      // check if player did not play any cards
+      if (playedCards.length === 0) {
+        console.log(`${socket.username} DID NOT PLAY ANY CARD, PASSED A TURN`);
+        socket.passedLastRound = true;
+        console.log(`socket.passedLastRound: ${socket.passedLastRound}`);
+
+        // check if there should be a new round
+        if (checkForNewRound(rooms[roomName], socket)) {
+          // reset currentTurn & playerTurn & stop code execution
+          io.in(rooms[roomName].lastUserWhoPlayed.id).emit("turn", "your turn");
+          delete rooms[roomName].lastPlayedCards;
+          io.in(rooms[roomName].name).emit(
+            "lastPlayedCards",
+            rooms[roomName].lastPlayedCards,
+            socket.username
+          );
+
+          return console.log("start new round");
+        }
+      } else {
+        // there are playedCards: check if they are valid
+        // Right format, were in user's deck and not played before
+
+        //because user did not pass, set passedLastRound to false & reset consecutivePassedTurns
+        socket.passedLastRound = false;
+        rooms[roomName].consecutivePassedTurns = 0;
+
+        // check if game is over
+        if (checkForNewGame(roomName, socket, playedCards)) {
+          // if a newGame is required, reset it here & stop code execution
+          // reset currentTurn & playerTurn, deck...
+          io.in(rooms[roomName].name).emit("turn", "your turn");
+          return;
+        }
+      }
+
+      // If there is no need for a newGame / newRound: continue normally
+
       // send turn event to the next player
       socket.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
       // emit the playedCards for everyone
@@ -354,6 +429,8 @@ io.on("connection", socket => {
         // keep track of lastPlayedCards (update when new cards got played)
         console.log("playedCards is truthy: " + playedCards);
         rooms[roomName].lastPlayedCards = playedCards;
+        // keep track of who played the last card(s)
+        rooms[roomName].lastUserWhoPlayed = socket;
       }
       io.in(rooms[roomName].name).emit(
         "lastPlayedCards",
