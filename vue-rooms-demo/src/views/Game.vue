@@ -28,7 +28,7 @@
       <div
         v-for="(card, index) in cards"
         :key="card.suit + card.value"
-        @click="playCard(card, index)"
+        @click="tryToPlayCard(card, index)"
       >
         {{ card.suit }} {{ card.value }}
       </div>
@@ -63,7 +63,6 @@ export default {
       cards: [],
       ownPlayedCards: [],
       lastPlayedCards: [],
-      //ownLastPlayedCards: [],
       turn: "",
       yourTurn: false,
     };
@@ -104,6 +103,7 @@ export default {
       this.getTurn(turnInfo);
     });
   },
+
   computed: {
     getRequiredCardValue() {
       let minValue;
@@ -124,7 +124,7 @@ export default {
 
   methods: {
     //user plays a card
-    playCard(card, index) {
+    tryToPlayCard(card, index) {
       let validPlay = false;
       if (this.yourTurn) {
         // check if it should conform to previously played card(s)
@@ -138,71 +138,61 @@ export default {
           console.log("there are playedCards");
 
           //check if played card is valid
-          // undefined on the first turn & doesnt pass if-check
+          //If cardValue is equal or higher than the required value (will be undefined on the first turn & skip if-check)
           if (
             CARD_VALUE_MAP[card.value] >=
               CARD_VALUE_MAP[this.getRequiredCardValue] ||
             CARD_VALUE_MAP[card.value] === 2
           ) {
-            validPlay = true;
-            console.log(this.ownPlayedCards.length);
-            // check if played cards are the same value
-            // NOTE: there won't be ownPlayedCards when adding the first card
-            this.ownPlayedCards.forEach(ownPlayedCard => {
-              console.log(
-                `cardValue: ${card.value} ownPlayedCard.value: ${ownPlayedCard.value}`
-              );
-              if (
-                card.value !== ownPlayedCard.value &&
-                CARD_VALUE_MAP[card.value] !== 2 &&
-                CARD_VALUE_MAP[ownPlayedCard.value] !== 2
-              ) {
-                // if the value is different, block the card from being added
-                console.log("Invalid play, cards not the same value");
-                validPlay = false;
-              }
-              console.log(
-                `played card: ${card.value}, lastPlayedCard: ${ownPlayedCard.value}`
-              );
-            });
+            validPlay = this.checkCardsForSameValue(card);
+            console.log(validPlay);
           }
-        } else if (Object.keys(this.lastPlayedCards).length === 0) {
+        } else {
           // if there were no card(s) played last round, play any card
 
-          // check if the played card values are the same
+          // if there are ownPlayedCards, check if the played card values are the same
           if (this.ownPlayedCards.length > 0) {
-            this.ownPlayedCards.forEach(ownPlayedCard => {
-              console.log(
-                `firstTurn - cardValue: ${card.value} ownPlayedCard.value: ${ownPlayedCard.value}`
-              );
-              if (
-                card.value !== ownPlayedCard.value &&
-                CARD_VALUE_MAP[card.value] !== 2 &&
-                CARD_VALUE_MAP[ownPlayedCard.value] !== 2
-              ) {
-                // if the value is different, block the card from being added
-                console.log(
-                  "firsTurn - Invalid play, cards not the same value"
-                );
-              } else {
-                validPlay = true;
-              }
-              console.log(
-                `FirstTurn - played card: ${card.value}, lastPlayedCard: ${ownPlayedCard.value}`
-              );
-            });
+            validPlay = this.checkCardsForSameValue(card);
           } else {
             // if there is only 1 played card, who does not need to conform with a card played last round
             validPlay = true;
           }
         }
         if (validPlay) {
-          // if validPlay, remove card from playerDeck and add to ownPlayedCards
-          this.cards.splice(index, 1);
-          this.ownPlayedCards.push(card);
-          this.socket.emit("playCard", this.gameId, card);
-          console.log(this.ownPlayedCards);
+          this.playCard(validPlay, card, index);
         }
+      }
+    },
+
+    // check if the played cards have the same value
+    checkCardsForSameValue(card) {
+      let validPlay = false; // define a var to keep track if play is valid
+      validPlay = true; // start with true, so you can set it to false when one value fails
+      // NOTE: there won't be ownPlayedCards when adding the first card
+      this.ownPlayedCards.forEach(ownPlayedCard => {
+        // check if the card value is not equal (or 2) to ownPlayedCards
+        if (
+          card.value !== ownPlayedCard.value &&
+          CARD_VALUE_MAP[card.value] !== 2 &&
+          CARD_VALUE_MAP[ownPlayedCard.value] !== 2
+        ) {
+          // if the value is different, block the card from being added
+          console.log("Invalid play, cards not the same value");
+          validPlay = false;
+        }
+      });
+
+      return validPlay;
+    },
+
+    // user card was succesfully validated (client side)
+    playCard(validPlay, card, index) {
+      if (validPlay) {
+        // if validPlay, remove card from playerDeck and add to ownPlayedCards
+        this.cards.splice(index, 1);
+        this.ownPlayedCards.push(card);
+        this.socket.emit("playCard", this.gameId, card);
+        console.log(this.ownPlayedCards);
       }
     },
 
