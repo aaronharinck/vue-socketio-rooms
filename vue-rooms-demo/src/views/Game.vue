@@ -19,6 +19,7 @@
       <div
         v-for="ownPlayedCard in ownPlayedCards"
         :key="ownPlayedCard.suit + ownPlayedCard.value"
+        @click="removeOwnPlayedCard(ownPlayedCard, index)"
       >
         {{ ownPlayedCard.suit }}{{ ownPlayedCard.value }}
       </div>
@@ -194,6 +195,13 @@ export default {
         this.socket.emit("playCard", this.gameId, card);
         console.log(this.ownPlayedCards);
       }
+    },
+
+    // remove a card that was not confirmed yet
+    removeOwnPlayedCard(card, index) {
+      this.ownPlayedCards.splice(index, 1);
+      this.cards.push(card);
+      this.socket.emit("removedCard", this.gameId, card);
     },
 
     // get turn
