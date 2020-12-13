@@ -386,7 +386,7 @@ io.on("connection", socket => {
 
       // check if player did not play any cards
       if (playedCards.length === 0) {
-        console.log(`${socket.username} DID NOT PLAY ANY CARD, PASSED A TURN`);
+        console.log(`${socket.username} Did not play any card, passed a turn`);
         socket.passedLastRound = true;
         console.log(`socket.passedLastRound: ${socket.passedLastRound}`);
 
@@ -406,6 +406,39 @@ io.on("connection", socket => {
       } else {
         // there are playedCards: check if they are valid
         // Right format, were in user's deck and not played before
+        console.log("playedCards");
+        console.log(playedCards);
+        console.log("clients[socket.id].cards");
+        console.log(clients[socket.id].cards);
+        // check if they are in user deck
+        let removedElements = 0;
+        let clientCardsCopy = [...clients[socket.id].cards]; // work on a copy, because we want to validate first
+        console.log("copy of client cards");
+        console.log(clientCardsCopy);
+        // remove them from user deck
+        playedCards.forEach(cardPlayed => {
+          clientCardsCopy.forEach((card, index) => {
+            if (
+              card.value === cardPlayed.value &&
+              card.suit === cardPlayed.suit
+            ) {
+              clientCardsCopy.splice(index, 1);
+              removedElements++;
+            }
+          });
+        });
+        console.log(playedCards.length);
+        console.log(removedElements);
+        if (playedCards.length === removedElements) {
+          // the played cards were valid
+          console.log("valid");
+          clients[socket.id].cards = [...clientCardsCopy]; // set the real cards value to the copy
+        }
+
+        console.log("playedCards after remove");
+        console.log(playedCards);
+        console.log("clients[socket.id].cards after remove");
+        console.log(clients[socket.id].cards);
 
         //because user did not pass, set passedLastRound to false & reset consecutivePassedTurns
         socket.passedLastRound = false;
