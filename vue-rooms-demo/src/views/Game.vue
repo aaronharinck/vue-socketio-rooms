@@ -17,7 +17,7 @@
       </div>
       <button v-if="yourTurn" @click="confirmTurn()">confirm turn</button>
       <div
-        v-for="ownPlayedCard in ownPlayedCards"
+        v-for="(ownPlayedCard, index) in ownPlayedCards"
         :key="ownPlayedCard.suit + ownPlayedCard.value"
         @click="removeOwnPlayedCard(ownPlayedCard, index)"
       >
