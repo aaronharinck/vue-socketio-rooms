@@ -160,9 +160,9 @@ const checkForNewGame = (roomName, socket, playedCards) => {
     );
 
     // distribute it fairly (for now)
-    //give each player cards from the deck
-    Object.keys(rooms[roomName].users).forEach(userId => {
-      clients[userId].cards = splitUpDeck.shift();
+    //give each player cards from the deck (deal cards to president first, because president starts)
+    rooms[roomName].finishedUsers.forEach(finishedUserId => {
+      clients[finishedUserId].cards = splitUpDeck.shift();
       // don't send specific cards to a specific player yet
       // io.in(clients[userId].id).emit("cards", clients[userId].cards);
     });
@@ -235,12 +235,13 @@ const giveBestCards = (from, to, amount) => {
   });
 
   // remove custom amount of cards and push to other user (start from index 0)
-  console.log(`from: ${from}  to:${to}`);
+  console.log(`giveBestCards: from: ${from}  to:${to}`);
   console.log("clients[to].cards before splice");
   console.log(clients[to].cards);
   console.log(clients[to].cards.push(...clients[from].cards.splice(0, amount)));
   console.log("clients[to].cards after splice");
   console.log(clients[to].cards);
+  console.log("-----");
   //clients[to].cards.push(...(clients[from].cards.splice(0, amount)));
 
   /*
@@ -264,7 +265,29 @@ const giveBestCards = (from, to, amount) => {
 };
 
 // winners can give their worst cards to the losers
-const giveWorstCards = (from, to, amount) => {};
+const giveWorstCards = (from, to, amount) => {
+  // loop over cards and remove the worst one(s) 2>A>K>Q>J>10..
+
+  // sort cards from lowest to highest
+  clients[from].cards.sort((cardA, cardB) => {
+    if (Game.CARD_VALUE_MAP[cardA.value] === 2) return 1;
+    if (Game.CARD_VALUE_MAP[cardB.value] === 2) return -1;
+    if (Game.CARD_VALUE_MAP[cardA.value] > Game.CARD_VALUE_MAP[cardB.value])
+      return 1;
+    if (Game.CARD_VALUE_MAP[cardA.value] < Game.CARD_VALUE_MAP[cardB.value])
+      return -1;
+    return 0;
+  });
+
+  // remove custom amount of cards and push to other user (start from index 0)
+  console.log(`giveWorstCards: from: ${from}  to:${to}`);
+  console.log("clients[to].cards before splice");
+  console.log(clients[to].cards);
+  console.log(clients[to].cards.push(...clients[from].cards.splice(0, amount)));
+  console.log("clients[to].cards after splice");
+  console.log(clients[to].cards);
+  console.log("------");
+};
 
 /*--- SOCKET.IO ---*/
 io.on("connection", socket => {
