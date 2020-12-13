@@ -138,7 +138,17 @@ const checkForNewRound = (room, socket) => {
   }
 };
 
-const checkForNewGame = () => {};
+const checkForNewGame = (roomName, socket, playedCards) => {
+  // check if a new game is needed by comparing the finished users amount and total users
+  if (
+    rooms[roomName].finishedUsersAmount ===
+    Object.keys(rooms[roomName].users).length
+  ) {
+    console.log("New game required");
+  }
+  // keep track on who finished in which order
+  // loop over all the cards from every user in the room
+};
 
 /*--- SOCKET.IO ---*/
 io.on("connection", socket => {
@@ -405,17 +415,10 @@ io.on("connection", socket => {
         }
       } else {
         // there are playedCards: check if they are valid
-        // Right format, were in user's deck and not played before
-        console.log("playedCards");
-        console.log(playedCards);
-        console.log("clients[socket.id].cards");
-        console.log(clients[socket.id].cards);
-        // check if they are in user deck
+        // check if they are in user deck, and remove them after
         let removedElements = 0;
         let clientCardsCopy = [...clients[socket.id].cards]; // work on a copy, because we want to validate first
-        console.log("copy of client cards");
-        console.log(clientCardsCopy);
-        // remove them from user deck
+        // remove them from user deck (copy)
         playedCards.forEach(cardPlayed => {
           clientCardsCopy.forEach((card, index) => {
             if (
@@ -427,33 +430,89 @@ io.on("connection", socket => {
             }
           });
         });
-        console.log(playedCards.length);
-        console.log(removedElements);
+        console.log(`playedCards.length: ${playedCards.length}`);
+        console.log(`removedElements: ${removedElements}`);
         if (playedCards.length === removedElements) {
           // the played cards were valid
-          console.log("valid");
+          console.log("all playedCards were valid");
           clients[socket.id].cards = [...clientCardsCopy]; // set the real cards value to the copy
-        }
 
-        console.log("playedCards after remove");
-        console.log(playedCards);
-        console.log("clients[socket.id].cards after remove");
-        console.log(clients[socket.id].cards);
+          //because user did not pass, set passedLastRound to false & reset consecutivePassedTurns
+          socket.passedLastRound = false;
+          rooms[roomName].consecutivePassedTurns = 0;
 
-        //because user did not pass, set passedLastRound to false & reset consecutivePassedTurns
-        socket.passedLastRound = false;
-        rooms[roomName].consecutivePassedTurns = 0;
+          // check if player is out of cards
+          if (
+            clients[socket.id].cards.length === 0 &&
+            !clients[socket.id].placement
+          ) {
+            console.log(
+              `${socket.username} has ${
+                clients[socket.id].cards.length
+              } cards left, user is out of cards!`
+            );
 
-        // check if game is over
-        if (checkForNewGame(roomName, socket, playedCards)) {
-          // if a newGame is required, reset it here & stop code execution
-          // reset currentTurn & playerTurn, deck...
-          io.in(rooms[roomName].name).emit("turn", "your turn");
+            // check the ranking/placement of the player
+            if (rooms[roomName].finishedUsersAmount) {
+              // There are finished users
+              console.log(
+                `there are ${rooms[roomName].finishedUsersAmount} finished users`
+              );
+
+              // add player to finishedUsersAmount
+              rooms[roomName].finishedUsersAmount++;
+
+              //set placement to current finishedUserAmount
+              clients[socket.id].placement =
+                rooms[roomName].finishedUsersAmount;
+              console.log(
+                `socket placement after ++ ${clients[socket.id].placement}`
+              );
+              console.log(
+                `finishedUsersAmount after ++ ${rooms[roomName].finishedUsersAmount}`
+              );
+              console.log(
+                `${socket.username} is ${
+                  clients[socket.id].placement
+                }th out of ${
+                  rooms[roomName].finishedUsersAmount
+                } finished users`
+              );
+
+              // check if game is finished
+              if (checkForNewGame(roomName, socket, playedCards)) {
+                // if a newGame is required, reset it here & stop code execution
+                // reset currentTurn & playerTurn, deck...
+                io.in(rooms[roomName].name).emit("turn", "your turn");
+                return;
+              }
+            } else {
+              // user is the first to finish
+              console.log("there were no finished users!");
+              rooms[roomName].finishedUsersAmount = 1;
+              clients[socket.id].placement =
+                rooms[roomName].finishedUsersAmount;
+            }
+          }
+
+          /*
+          // check if game is over
+          if (checkForNewGame(roomName, socket, playedCards)) {
+            // if a newGame is required, reset it here & stop code execution
+            // reset currentTurn & playerTurn, deck...
+            io.in(rooms[roomName].name).emit("turn", "your turn");
+            return;
+          }
+          */
+
+          // If there is no need for a newGame / newRound: continue normally
+        } else {
+          // playedCards were not valid
+          console.log("invalid playedCards");
+          // emit error
           return;
         }
       }
-
-      // If there is no need for a newGame / newRound: continue normally
 
       // send turn event to the next player
       socket.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
