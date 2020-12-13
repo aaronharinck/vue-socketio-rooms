@@ -158,4 +158,4 @@ const splitUp = (arr, n) => {
 
 // startGame();
 
-module.exports = { startGame, getShuffledDeck, splitUp };
+module.exports = { startGame, getShuffledDeck, splitUp, CARD_VALUE_MAP };

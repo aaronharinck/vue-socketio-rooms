@@ -145,10 +145,126 @@ const checkForNewGame = (roomName, socket, playedCards) => {
     Object.keys(rooms[roomName].users).length
   ) {
     console.log("New game required");
+    // create a new game
+
+    // reset stuff from previous round(s) placements, cards, finishedUsersAmount
+
+    // CARDS
+    // get a random deck of cards
+    let shuffledGameDeck = Game.getShuffledDeck();
+
+    // split the deck evenly between players
+    let splitUpDeck = Game.splitUp(
+      shuffledGameDeck,
+      Object.keys(rooms[roomName].users).length
+    );
+
+    // distribute it fairly (for now)
+    //give each player cards from the deck
+    Object.keys(rooms[roomName].users).forEach(userId => {
+      clients[userId].cards = splitUpDeck.shift();
+      // don't send specific cards to a specific player yet
+      // io.in(clients[userId].id).emit("cards", clients[userId].cards);
+    });
+
+    // get roles (president, vice-president, vice-scum, scum)
+    let president = rooms[roomName].finishedUsers[0];
+    let vicePresident = rooms[roomName].finishedUsers[1];
+    let viceScum =
+      rooms[roomName].finishedUsers[rooms[roomName].finishedUsers.length - 2];
+    let scum =
+      rooms[roomName].finishedUsers[rooms[roomName].finishedUsers.length - 1];
+    console.log(`president: ${president}`);
+    console.log(`vicePresident: ${vicePresident}`);
+    console.log(`viceScum: ${viceScum} `);
+    console.log(`scum: ${scum}`);
+
+    // distribute cards according to placements
+    // last place (scum) must give their two best cards to the president
+    giveBestCards(scum, president, 2);
+    // second to last place (vice-scum) must give their best card to the vice-president
+    giveBestCards(viceScum, vicePresident, 1);
+    // second place (vice-president) gives their worst card to the vice-scum
+    giveWorstCards(vicePresident, viceScum, 1);
+    // first place (president) gives their 2 worst cards to the scum
+    giveWorstCards(president, scum, 2);
+
+    rooms[roomName].finishedUsers.forEach((finishedUser, index) => {
+      console.log(`${finishedUser} was ${index}`);
+      // lose best cards function
+      // get best cards function
+
+      /*
+      switch(index) {
+        case 0:
+          // code block
+          break;
+        case 1:
+          // code block
+          break;
+        default:
+          // code block
+      }
+      */
+    });
+
+    // // distribute card according to placements to get last users: array.length - 1
+    // rooms[roomName].finishedUsers.forEach((finishedUser, index) => {
+    //   console.log(`${finishedUser} was ${index}`);
+    // });
+
+    // reset finishedUsers (& start round with president?)
+  } else {
+    // Game is not finished
   }
-  // keep track on who finished in which order
-  // loop over all the cards from every user in the room
 };
+
+// losers will have to give up their best cards
+const giveBestCards = (from, to, amount) => {
+  // loop over cards and remove the best one(s) 2>A>K>Q>J>10..
+
+  // sort cards from highest to lowest
+  clients[from].cards.sort((cardA, cardB) => {
+    if (Game.CARD_VALUE_MAP[cardA.value] === 2) return -1;
+    if (Game.CARD_VALUE_MAP[cardB.value] === 2) return 1;
+    if (Game.CARD_VALUE_MAP[cardA.value] < Game.CARD_VALUE_MAP[cardB.value])
+      return 1;
+    if (Game.CARD_VALUE_MAP[cardA.value] > Game.CARD_VALUE_MAP[cardB.value])
+      return -1;
+    return 0;
+  });
+
+  // remove custom amount of cards and push to other user (start from index 0)
+  console.log(`from: ${from}  to:${to}`);
+  console.log("clients[to].cards before splice");
+  console.log(clients[to].cards);
+  console.log(clients[to].cards.push(...clients[from].cards.splice(0, amount)));
+  console.log("clients[to].cards after splice");
+  console.log(clients[to].cards);
+  //clients[to].cards.push(...(clients[from].cards.splice(0, amount)));
+
+  /*
+  // loop over the cards and sort them from high to low
+    cards.sort((cardA,cardB) => {
+    if(CARD_VALUE_MAP[cardA.value] === 2) return -1;
+    if(CARD_VALUE_MAP[cardB.value] === 2) return 1;
+    if(CARD_VALUE_MAP[cardA.value] < CARD_VALUE_MAP[cardB.value]) return 1;
+    if(CARD_VALUE_MAP[cardA.value] > CARD_VALUE_MAP[cardB.value]) return -1;
+    return 0;
+});
+
+  // remove custom amount of cards and push to other user (start from index 0)
+  cards.splice(0, amount); 
+
+  */
+
+  clients[from].cards.forEach(card => {
+    console.log(`${card.value} becomes ${Game.CARD_VALUE_MAP[card.value]}`);
+  });
+};
+
+// winners can give their worst cards to the losers
+const giveWorstCards = (from, to, amount) => {};
 
 /*--- SOCKET.IO ---*/
 io.on("connection", socket => {
@@ -354,9 +470,11 @@ io.on("connection", socket => {
   // player clicked "start game" in a room
   socket.on("startGame", roomName => {
     console.log(`player wants ${roomName} to start!`);
+
     if (roomName && rooms[roomName] && socket.username) {
       console.log(`player started ${roomName}`);
       io.in(roomName).emit("startGame", roomName);
+
       // start the game
       setTimeout(() => {
         /* handle the game logic */
@@ -376,6 +494,7 @@ io.on("connection", socket => {
           //send specific cards to a specific player
           io.in(clients[userId].id).emit("cards", clients[userId].cards);
         });
+
         // initiate first turn
         io.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
       }, 4000);
@@ -479,6 +598,9 @@ io.on("connection", socket => {
                 } finished users`
               );
 
+              // pass finished user to end of finishedUsers property in the room
+              rooms[roomName].finishedUsers.push(clients[socket.id].id);
+
               // check if game is finished
               if (checkForNewGame(roomName, socket, playedCards)) {
                 // if a newGame is required, reset it here & stop code execution
@@ -488,10 +610,13 @@ io.on("connection", socket => {
               }
             } else {
               // user is the first to finish
-              console.log("there were no finished users!");
-              rooms[roomName].finishedUsersAmount = 1;
+              console.log(
+                `${clients[socket.id].username} was the first to finish!`
+              );
+              rooms[roomName].finishedUsersAmount = 1; // set finished amount default to 1
               clients[socket.id].placement =
-                rooms[roomName].finishedUsersAmount;
+                rooms[roomName].finishedUsersAmount; // pass placement to user
+              rooms[roomName].finishedUsers = [clients[socket.id].id];
             }
           }
 
