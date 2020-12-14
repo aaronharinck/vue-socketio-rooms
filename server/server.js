@@ -139,6 +139,11 @@ const checkForNewRound = (room, socket) => {
 };
 
 const checkForNewGame = (roomName, socket, playedCards) => {
+  // check if roomName was passed
+  if (!rooms[roomName]) {
+    return false;
+  }
+
   // check if a new game is needed by comparing the finished users amount and total users
   if (
     rooms[roomName].finishedUsersAmount ===
@@ -146,8 +151,6 @@ const checkForNewGame = (roomName, socket, playedCards) => {
   ) {
     console.log("New game required");
     // create a new game
-
-    // reset stuff from previous round(s) placements, cards, finishedUsersAmount
 
     // CARDS
     // get a random deck of cards
@@ -193,29 +196,28 @@ const checkForNewGame = (roomName, socket, playedCards) => {
       console.log(`${finishedUser} was ${index}`);
       // lose best cards function
       // get best cards function
-
-      /*
-      switch(index) {
-        case 0:
-          // code block
-          break;
-        case 1:
-          // code block
-          break;
-        default:
-          // code block
-      }
-      */
     });
 
-    // // distribute card according to placements to get last users: array.length - 1
-    // rooms[roomName].finishedUsers.forEach((finishedUser, index) => {
-    //   console.log(`${finishedUser} was ${index}`);
-    // });
+    // reset stuff from previous round(s) placements, cards, finishedUsersAmount, finishedUsers,...
+    rooms[roomName].consecutivePassedTurns = 0;
+    delete rooms[roomName].finishedUsers;
+    delete rooms[roomName].finishedUsersAmount;
+    delete rooms[roomName].lastUserWhoPlayed;
+    delete rooms[roomName].lastPlayedCards;
 
-    // reset finishedUsers (& start round with president?)
+    // start round with president
+    rooms[roomName].playerTurn = president;
+    // add +1 on currentTurn, because we won't use nextTurn() function to create our first new turn
+    rooms[roomName].currentTurn =
+      Object.keys(rooms[roomName].users).indexOf(president) + 1;
+
+    // send emit that a new game has started (send cards, turn events...)
+    console.log(rooms[roomName]);
+    console.log("a new game has started!");
+    return true;
   } else {
     // Game is not finished
+    console.log("game was not finished");
   }
 };
 
@@ -583,6 +585,14 @@ io.on("connection", socket => {
           socket.passedLastRound = false;
           rooms[roomName].consecutivePassedTurns = 0;
 
+          console.log("clients[socket.id].placement");
+          console.log(clients[socket.id].placement);
+          console.log("clients[socket.id].cards.length");
+          console.log(clients[socket.id].cards.length);
+          if (clients[socket.id].placement) {
+            console.log("socket.id.placements: true");
+          }
+
           // check if player is out of cards
           if (
             clients[socket.id].cards.length === 0 &&
@@ -628,7 +638,22 @@ io.on("connection", socket => {
               if (checkForNewGame(roomName, socket, playedCards)) {
                 // if a newGame is required, reset it here & stop code execution
                 // reset currentTurn & playerTurn, deck...
-                io.in(rooms[roomName].name).emit("turn", "your turn");
+
+                // send emit of new cards
+                Object.keys(rooms[roomName].users).forEach(userId => {
+                  // delete their previous placements
+                  if (clients[userId].placement) {
+                    delete clients[userId].placement;
+                  }
+
+                  io.in(clients[userId].id).emit(
+                    "cards",
+                    clients[userId].cards
+                  );
+                });
+
+                // send emit to winner of last round (president) that they can start
+                io.in(rooms[roomName].playerTurn).emit("turn", "your turn");
                 return;
               }
             } else {
@@ -704,14 +729,23 @@ io.on("connection", socket => {
     //remove rooms that client was in
     getUserRooms(socket).forEach(roomName => {
       console.log(`${socket.id} has left ${roomName}`);
+      // send emit to every user in that room that they should leave
+      io.in(roomName).emit("gameOver", "leave game");
+
       //delete user from rooms object
       delete rooms[roomName].users[socket.id];
+
+      //delete room
+      delete rooms[roomName];
+
+      /*
       //delete room if there are 0 users
       if (Object.keys(rooms[roomName].users).length === 0) {
         delete rooms[roomName];
         //because a room was deleted, send an updated rooms event
         io.emit("allRooms", rooms);
       }
+      */
     });
     console.log(
       `A user (${socket.id} ${
