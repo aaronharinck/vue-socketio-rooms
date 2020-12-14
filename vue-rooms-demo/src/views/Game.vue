@@ -76,7 +76,11 @@ export default {
 
     // check if game ready
     this.socket.on("gameReady", receivedUsers => {
+      // reset playedCards
+      let playedCards = undefined;
       this.connectedUsers = receivedUsers;
+      console.log("new game started!");
+      this.lastPlayedCards = playedCards;
     });
 
     // get turn
@@ -96,7 +100,9 @@ export default {
     });
     this.socket.on("lastPlayedCards", (lastPlayedCards, username) => {
       this.lastPlayedCards = lastPlayedCards;
-      console.log(`played by ${username}`);
+      if (username) {
+        console.log(`played by ${username}`);
+      }
     });
 
     // handle turns

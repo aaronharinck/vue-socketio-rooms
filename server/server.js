@@ -68,9 +68,8 @@ const nextTurn = (room, socket) => {
     'kpM85q-Uskq6Zy1YAAAL': 'Dirk'
   } } */
 
-  console.log("___socket.username____");
+  console.log("LOGS FROM NEXTTURN ___socket.username____");
   console.log(socket.username + " " + room.playerTurn);
-  console.log(room.currentTurn);
 
   // check if there is a currentTurn property & requested by the previous player
   if (
@@ -87,7 +86,46 @@ const nextTurn = (room, socket) => {
     console.log("-----");
     console.log(room.playerTurn);
     console.log(`${room.currentTurn} is the turn, ${room.playerTurn} can play`);
-    return room.playerTurn;
+
+    // check if the player already finished (pass turn if true)
+    console.log("clients[room.playerTurn].placement");
+    console.log(clients[room.playerTurn].placement);
+
+    // check if the player already finished
+    if (clients[room.playerTurn].placement) {
+      //if player already had a placement, go to the next player who has no placement
+      const findNextUnplacedPlayer = (iteration = 0) => {
+        if (iteration <= usersArr.length) {
+          //base case
+          newTurnUserArrPos = room.currentTurn++ % usersArr.length;
+          room.playerTurn = usersArr[newTurnUserArrPos];
+          // if no placement on playerTurn: return
+          if (!clients[room.playerTurn].placement) {
+            console.log(
+              `in if pt.placement: room.playerTurn (an id) returned that has no placement: ${room.playerTurn}`
+            );
+            return room.playerTurn;
+          } else {
+            //recursive call to itself
+            console.log(
+              `${
+                clients[room.playerTurn]
+              } has been passed automatically, placement: ${
+                clients[room.playerTurn].placement
+              } iteration: ${iteration}`
+            );
+            iteration++;
+            findNextUnplacedPlayer(iteration);
+          }
+        } else {
+          return false;
+        }
+      };
+      return findNextUnplacedPlayer();
+    } else {
+      // currentPlayer is valid, send return
+      return room.playerTurn;
+    }
   } else if (room && room.users.hasOwnProperty(socket.id)) {
     // start turns
     room.currentTurn = 0;
@@ -115,11 +153,36 @@ const checkForNewRound = (room, socket) => {
     room.consecutivePassedTurns++;
   }
 
+  // get finishedUsers, because we want subtract them from our total room users
+  let finishedUsersLength = 0;
+  if (room.finishedUsers) {
+    finishedUsersLength = room.finishedUsers.length;
+  }
+
   // if every user passed, create a new round
-  if (Object.keys(room.users).length === room.consecutivePassedTurns) {
+  if (
+    Object.keys(room.users).length - finishedUsersLength ===
+    room.consecutivePassedTurns
+  ) {
     // if there is no lastUserWhoPlayed because nobody played a card & everyone passed, set it to the first user
     if (!room.lastUserWhoPlayed) {
+      let returnedValueNextTurn = nextTurn(room, socket);
+      room.lastUserWhoPlayed = returnedValueNextTurn;
+
+      console.log("room.lastUserWhoPlayed:");
+      console.log(room.lastUserWhoPlayed);
+      /* before: set hardcoded to first user
       room.lastUserWhoPlayed = Object.keys(room.users)[0];
+      console.log("Object.keys(room.users)[0]:");
+      console.log(Object.keys(room.users)[0]);
+      console.log("lastUserWhoPlayed did not exist, lastUserWhoPlayed:");
+      let returnedVal = nextTurn(room, socket);
+      console.log("/_/_/_/_/_/_/_/_/_");
+      console.log(`returnedVal: ${returnedVal}`);
+      console.log(Object.keys(room.users[returnedVal]));
+      console.log("room.users:");
+      console.log(room.users);
+      */
     }
     console.log(`New round required, ${room.lastUserWhoPlayed} can start!`);
     // reset consectuivePassedRounds, currentTurn & playerTurn
@@ -127,6 +190,8 @@ const checkForNewRound = (room, socket) => {
     console.log("index lastUserWhoPlayed:");
     console.log(Object.keys(room.users).indexOf(room.lastUserWhoPlayed.id));
     room.playerTurn = room.lastUserWhoPlayed.id;
+    console.log("room.lastUserWhoPlayed:");
+    console.log(room.lastUserWhoPlayed.username);
     // add +1 on currentTurn, because we won't use nextTurn() function to create our first new turn
     room.currentTurn =
       Object.keys(room.users).indexOf(room.lastUserWhoPlayed.id) + 1;
@@ -139,8 +204,15 @@ const checkForNewRound = (room, socket) => {
 };
 
 const checkForNewGame = (roomName, socket, playedCards) => {
-  // check if roomName was passed
-  if (!rooms[roomName]) {
+  // check if roomName was passed & finishedUsers is equal to total users
+  if (
+    !rooms[roomName] ||
+    rooms[roomName].finishedUsers.length !==
+      Object.keys(rooms[roomName].users).length
+  ) {
+    console.log(
+      "check for newGame failed if check (not valid room or finishedUsers length is different from users length"
+    );
     return false;
   }
 
@@ -166,8 +238,6 @@ const checkForNewGame = (roomName, socket, playedCards) => {
     //give each player cards from the deck (deal cards to president first, because president starts)
     rooms[roomName].finishedUsers.forEach(finishedUserId => {
       clients[finishedUserId].cards = splitUpDeck.shift();
-      // don't send specific cards to a specific player yet
-      // io.in(clients[userId].id).emit("cards", clients[userId].cards);
     });
 
     // get roles (president, vice-president, vice-scum, scum)
@@ -191,12 +261,6 @@ const checkForNewGame = (roomName, socket, playedCards) => {
     giveWorstCards(vicePresident, viceScum, 1);
     // first place (president) gives their 2 worst cards to the scum
     giveWorstCards(president, scum, 2);
-
-    rooms[roomName].finishedUsers.forEach((finishedUser, index) => {
-      console.log(`${finishedUser} was ${index}`);
-      // lose best cards function
-      // get best cards function
-    });
 
     // reset stuff from previous round(s) placements, cards, finishedUsersAmount, finishedUsers,...
     rooms[roomName].consecutivePassedTurns = 0;
@@ -528,7 +592,7 @@ io.on("connection", socket => {
   });
 
   socket.on("confirmTurn", (roomName, playedCards) => {
-    // start by verifying incoming event
+    // start by verifying incoming event (correct room, player turn)
     if (
       roomName &&
       rooms[roomName] &&
@@ -547,6 +611,23 @@ io.on("connection", socket => {
         // check if there should be a new round
         if (checkForNewRound(rooms[roomName], socket)) {
           // reset currentTurn & playerTurn & stop code execution
+
+          // check if user is not already finished yet
+          if (clients[rooms[roomName].lastUserWhoPlayed.id].placement) {
+            // check if game is not totally finished
+            if (rooms[roomName].finishedUsersAmount < rooms[roomName.users]) {
+              // change lastUserWhoPlayed to an unfinished user (pref the next one)
+
+              delete rooms[roomName].lastUserWhoPlayed;
+
+              console.log("lastUserWhoPlayed deleted");
+
+              console.log("****");
+              console.log("USER PLACEMENT EXISTS IN CHECKFORNEWROUND");
+              console.log("****");
+            }
+          }
+
           io.in(rooms[roomName].lastUserWhoPlayed.id).emit("turn", "your turn");
           delete rooms[roomName].lastPlayedCards;
           io.in(rooms[roomName].name).emit(
@@ -652,6 +733,9 @@ io.on("connection", socket => {
                   );
                 });
 
+                // send event that game is ready
+                io.in(rooms[roomName]).emit("gameReady", rooms[roomName].users);
+
                 // send emit to winner of last round (president) that they can start
                 io.in(rooms[roomName].playerTurn).emit("turn", "your turn");
                 return;
@@ -694,8 +778,32 @@ io.on("connection", socket => {
         // keep track of lastPlayedCards (update when new cards got played)
         console.log("playedCards is truthy: " + playedCards);
         rooms[roomName].lastPlayedCards = playedCards;
-        // keep track of who played the last card(s)
-        rooms[roomName].lastUserWhoPlayed = socket;
+        rooms[roomName].lastUserWhoPlayed = clients[socket.id];
+
+        if (clients[socket.id].placement) {
+          if (checkForNewRound(rooms[roomName], socket)) {
+          }
+        }
+        //disable this if statement
+        if (20 === 2) {
+          // keep track of who played the last card(s)
+          if (clients[socket.id].placement) {
+            console.log("socket has placement check true");
+            // if player already has a placement, get another one
+            console.log("__returned socket normally___");
+            console.log(rooms[roomName].lastUserWhoPlayed);
+            // get a client[socket.id]
+            console.log("X-X-X-X-X-X");
+            console.log(
+              "__returned with clients[nextTurn(rooms[roomName], socket)])__"
+            );
+            // we need the next client[socket.id]
+            console.log(clients[nextTurn(rooms[roomName], socket)]);
+            console.log("X-X-X-X-X-X");
+            // rooms[roomName].lastUserWhoPlayed =
+            //   clients[nextTurn(rooms[roomName], socket)];
+          }
+        }
       }
       io.in(rooms[roomName].name).emit(
         "lastPlayedCards",
@@ -733,10 +841,14 @@ io.on("connection", socket => {
       io.in(roomName).emit("gameOver", "leave game");
 
       //delete user from rooms object
-      delete rooms[roomName].users[socket.id];
+      if (rooms[roomName] && rooms[roomName].users[socket.id]) {
+        delete rooms[roomName].users[socket.id];
+      }
 
       //delete room
-      delete rooms[roomName];
+      if (rooms[roomName]) {
+        delete rooms[roomName];
+      }
 
       /*
       //delete room if there are 0 users
