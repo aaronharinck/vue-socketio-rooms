@@ -421,7 +421,9 @@ io.on("connection", socket => {
         socket.leave(socket.connectedRoom.name);
 
         //delete from our own rooms object
-        delete rooms[socket.connectedRoom].users[socket.id];
+        if (rooms[socket.connectedRoom] && rooms[socket.connectedRoom].users) {
+          delete rooms[socket.connectedRoom].users[socket.id];
+        }
 
         //if the previous connected room is empty, delete the room
         if (Object.keys(rooms[socket.connectedRoom].users).length === 0) {
