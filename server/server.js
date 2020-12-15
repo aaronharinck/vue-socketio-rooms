@@ -25,12 +25,7 @@ http.listen(port, () => {
 const clients = {};
 
 //init rooms
-const rooms = {
-  room2: {
-    name: "room2",
-    users: { QYMUxUdRy6iILgbtAAAP: "Dirk" },
-  },
-};
+const rooms = {};
 
 const createRoom = room => {};
 
@@ -399,7 +394,7 @@ io.on("connection", socket => {
     rooms[roomName].users[socket.id] = socket.username;
 
     //create a rooms property to keep track of user rooms
-    socket.connectedRoom = rooms[roomName];
+    socket.connectedRoom = rooms[roomName].name;
     clients[socket.id].connectedRoom = rooms[roomName];
 
     //emit an event that we created a room to the creator
@@ -415,7 +410,7 @@ io.on("connection", socket => {
     //check if room already exsists and if user is logged in
     if (roomName in rooms && socket.username) {
       //check if user is already connected to another room
-      if (socket.connectedRoom && socket.connectedRoom.name !== roomName) {
+      if (socket.connectedRoom && socket.connectedRoom !== roomName) {
         console.log(
           `already connected to another room: ${
             Object.values(socket.connectedRoom)[0]
@@ -426,11 +421,11 @@ io.on("connection", socket => {
         socket.leave(socket.connectedRoom.name);
 
         //delete from our own rooms object
-        delete rooms[socket.connectedRoom.name].users[socket.id];
+        delete rooms[socket.connectedRoom].users[socket.id];
 
         //if the previous connected room is empty, delete the room
-        if (Object.keys(rooms[socket.connectedRoom.name].users).length === 0) {
-          delete rooms[socket.connectedRoom.name];
+        if (Object.keys(rooms[socket.connectedRoom].users).length === 0) {
+          delete rooms[socket.connectedRoom];
           //because a room was deleted, send an updated rooms event
           io.emit("allRooms", rooms);
         }
@@ -448,15 +443,20 @@ io.on("connection", socket => {
       console.log(`${socket.username} joined ${roomName}`);
 
       //add joined user to our rooms object
-      rooms[roomName].users[socket.id] = socket.username; //{ room1: { name: 'room1', users: { QYMUxUdRy6iILgbtAAAP: 'Aaron' } } }
+      console.log(rooms);
+      console.log("roomName");
+      console.log(roomName);
+      console.log("rooms[roomName]");
+      console.log(rooms[roomName]);
+      rooms[roomName].users[socket.id] = socket.username;
       io.to(roomName).emit(
         "roomEntered",
         `${socket.username} has joined ${roomName}`
       );
 
       //set our connectedRoom to the room we just joined
-      socket.connectedRoom = rooms[roomName];
-      clients[socket.id].connectedRoom = rooms[roomName];
+      socket.connectedRoom = rooms[roomName].name;
+      clients[socket.id].connectedRoom = rooms[roomName].name;
 
       socket.emit("joinedRoom", roomName);
     } else {
@@ -539,6 +539,7 @@ io.on("connection", socket => {
     socket.emit("name", clients[socket.id]);
 
     // Get all rooms
+    console.log(rooms);
     socket.emit("allRooms", rooms);
 
     // Get all names from clients
@@ -553,7 +554,9 @@ io.on("connection", socket => {
   /*-- Game --*/
   //get all users
   socket.on("getRoomUsers", roomName => {
-    io.in(roomName).emit("getRoomUsers", rooms[roomName].users);
+    if (rooms[roomName] && rooms[roomName].users) {
+      io.in(roomName).emit("getRoomUsers", rooms[roomName].users);
+    }
   });
 
   // player clicked "start game" in a room
@@ -564,30 +567,36 @@ io.on("connection", socket => {
       console.log(`player started ${roomName}`);
       io.in(roomName).emit("startGame", roomName);
 
-      // start the game
-      setTimeout(() => {
-        /* handle the game logic */
-        // emit an event that starts the game
-        io.in(roomName).emit("gameReady", rooms[roomName].users);
-        let users = Object.keys(rooms[roomName].users);
-        console.log(rooms[roomName].users);
-        console.log(users);
+      try {
+        // start the game
+        setTimeout(() => {
+          /* handle the game logic */
+          // emit an event that starts the game
+          io.in(roomName).emit("gameReady", rooms[roomName].users);
+          let users = Object.keys(rooms[roomName].users);
+          console.log(rooms[roomName].users);
+          console.log(users);
 
-        // get a random deck of cards
-        let shuffledGameDeck = Game.getShuffledDeck();
-        // split the deck evenly between players
-        let splitUpDeck = Game.splitUp(shuffledGameDeck, users.length);
-        //give each player cards from the deck
-        users.forEach(userId => {
-          clients[userId].cards = splitUpDeck.shift();
-          //send specific cards to a specific player
-          io.in(clients[userId].id).emit("cards", clients[userId].cards);
-        });
+          // get a random deck of cards
+          let shuffledGameDeck = Game.getShuffledDeck();
+          // split the deck evenly between players
+          let splitUpDeck = Game.splitUp(shuffledGameDeck, users.length);
+          //give each player cards from the deck
+          users.forEach(userId => {
+            clients[userId].cards = splitUpDeck.shift();
+            //send specific cards to a specific player
+            io.in(clients[userId].id).emit("cards", clients[userId].cards);
+          });
 
-        // initiate first turn
-        io.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
-      }, 4000);
-      console.log("this should come after the cards, but doesn't");
+          // initiate first turn
+          io.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
+        }, 4000);
+        console.log("this should come after the cards, but doesn't");
+      } catch {
+        console.log(
+          "something went wrong in start game timeOut: user probably disconnected during timeout"
+        );
+      }
     }
   });
 
@@ -839,17 +848,14 @@ io.on("connection", socket => {
       console.log(`${socket.id} has left ${roomName}`);
       // send emit to every user in that room that they should leave
       io.in(roomName).emit("gameOver", "leave game");
-
       //delete user from rooms object
       if (rooms[roomName] && rooms[roomName].users[socket.id]) {
         delete rooms[roomName].users[socket.id];
       }
-
       //delete room
       if (rooms[roomName]) {
         delete rooms[roomName];
       }
-
       /*
       //delete room if there are 0 users
       if (Object.keys(rooms[roomName].users).length === 0) {
@@ -864,9 +870,10 @@ io.on("connection", socket => {
         clients[socket.id].username ? clients[socket.id].username : ""
       }) disconnected `
     );
-
     //delete user from clients
-    delete clients[socket.id];
+    if (clients[socket.id]) {
+      delete clients[socket.id];
+    }
     calcConnectedClients();
     io.emit("allRooms", rooms);
   });
