@@ -603,6 +603,13 @@ io.on("connection", socket => {
 
     if (roomName && rooms[roomName] && socket.username) {
       console.log(`player started ${roomName}`);
+      if (
+        Object.keys(rooms[roomName].users).length > 8 ||
+        Object.keys(rooms[roomName].users).length < 4
+      ) {
+        console.log("Inavlid user amount to start the room!");
+        return;
+      }
       io.in(roomName).emit("startGame", roomName);
 
       try {
