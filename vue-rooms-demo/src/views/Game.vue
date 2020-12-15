@@ -3,7 +3,11 @@
     <h3>Game {{ gameId }}</h3>
     <p v-if="!cards">Game is loading...</p>
     <ul v-if="connectedUsers">
-      <li v-for="connectedUser in connectedUsers" :key="connectedUser">
+      <li
+        v-for="connectedUser in connectedUsers"
+        :key="connectedUser"
+        :class="activeTurnClass"
+      >
         {{ connectedUser }}
       </li>
     </ul>
@@ -65,6 +69,7 @@ export default {
       ownPlayedCards: [],
       lastPlayedCards: [],
       turn: "",
+      activeTurn: "Aaron",
       yourTurn: false,
     };
   },
@@ -126,6 +131,11 @@ export default {
         });
       }
       return minValue;
+    },
+    activeTurnClass() {
+      return {
+        active: this.activeTurn,
+      };
     },
   },
 
@@ -233,3 +243,9 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+.active {
+  color: green;
+}
+</style>
