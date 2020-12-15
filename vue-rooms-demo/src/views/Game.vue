@@ -103,6 +103,7 @@ export default {
       turn: "",
       activeTurn: "Aaron",
       yourTurn: false,
+      currentPlayerTurn: "",
     };
   },
   mounted() {
@@ -257,6 +258,11 @@ export default {
     getTurn(turnInfo) {
       if (turnInfo === "your turn") {
         this.yourTurn = true;
+      } else {
+        // it's someone else's turn
+        console.log("someone else's turn");
+        console.log(turnInfo);
+        this.currentPlayerTurn = turnInfo;
       }
     },
 
@@ -276,7 +282,7 @@ export default {
 
     // get first
     checkUsernameForClass(username) {
-      if (username === "Aaron") {
+      if (username === this.currentPlayerTurn) {
         return "playingUser";
       }
     },

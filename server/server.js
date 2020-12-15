@@ -601,6 +601,14 @@ io.on("connection", socket => {
 
           // initiate first turn
           io.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
+          console.log(
+            "firstTurn: clients[rooms[roomName].playerTurn].username"
+          );
+          console.log(clients[rooms[roomName].playerTurn].username);
+          io.in(rooms[roomName].name).emit(
+            "turn",
+            clients[rooms[roomName].playerTurn].username
+          );
         }, 4000);
         console.log("this should come after the cards, but doesn't");
       } catch {
@@ -632,8 +640,11 @@ io.on("connection", socket => {
         if (checkForNewRound(rooms[roomName], socket)) {
           // reset currentTurn & playerTurn & stop code execution
 
+          /* TEMPORARILY DISABLE AUTO SKIP TURNS */
+
+          /*
           // check if user is not already finished yet
-          if (clients[rooms[roomName].lastUserWhoPlayed.id].placement) {
+          if (clients[rooms[roomName][lastUserWhoPlayed.id]].placement) {
             // check if game is not totally finished
             if (rooms[roomName].finishedUsersAmount < rooms[roomName.users]) {
               // change lastUserWhoPlayed to an unfinished user (pref the next one)
@@ -647,8 +658,14 @@ io.on("connection", socket => {
               console.log("****");
             }
           }
+          */
 
           io.in(rooms[roomName].lastUserWhoPlayed.id).emit("turn", "your turn");
+          io.in(rooms[roomName].name).emit(
+            "turn",
+            clients[rooms[roomName].lastUserWhoPlayed.id].username
+          );
+
           delete rooms[roomName].lastPlayedCards;
           io.in(rooms[roomName].name).emit(
             "lastPlayedCards",
@@ -754,10 +771,17 @@ io.on("connection", socket => {
                 });
 
                 // send event that game is ready
-                io.in(rooms[roomName]).emit("gameReady", rooms[roomName].users);
+                io.in(rooms[roomName].name).emit(
+                  "gameReady",
+                  rooms[roomName].users
+                );
 
                 // send emit to winner of last round (president) that they can start
                 io.in(rooms[roomName].playerTurn).emit("turn", "your turn");
+                io.in(rooms[roomName].name).emit(
+                  "turn",
+                  clients[rooms[roomName].playerTurn].username
+                );
                 return;
               }
             } else {
@@ -793,6 +817,10 @@ io.on("connection", socket => {
 
       // send turn event to the next player
       socket.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
+      io.in(rooms[roomName].name).emit(
+        "turn",
+        clients[rooms[roomName].playerTurn].username
+      );
       // emit the playedCards for everyone
       if (playedCards && Object.keys(playedCards).length !== 0) {
         // keep track of lastPlayedCards (update when new cards got played)
