@@ -51,7 +51,7 @@
     >
       confirm turn
     </button>
-    <p>Your cards:</p>
+    <p v-if="cards ? (cards.length > 0 ? true : false) : false">Your cards:</p>
     <div v-if="cards" class="cards">
       <div
         class="card"
