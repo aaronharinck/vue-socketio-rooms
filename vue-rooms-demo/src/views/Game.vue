@@ -6,7 +6,7 @@
       <li
         v-for="connectedUser in connectedUsers"
         :key="connectedUser"
-        :class="activeTurnClass"
+        :class="checkUsernameForClass(connectedUser)"
       >
         {{ connectedUser }}
       </li>
@@ -240,12 +240,19 @@ export default {
         this.ownPlayedCards = [];
       }
     },
+
+    // get first
+    checkUsernameForClass(username) {
+      if (username === "Aaron") {
+        return "playingUser";
+      }
+    },
   },
 };
 </script>
 
 <style scoped>
-.active {
+.playingUser {
   color: green;
 }
 </style>
