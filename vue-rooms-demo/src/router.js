@@ -6,6 +6,7 @@ import Room from "./views/Room.vue";
 import Game from "./views/Game.vue";
 import Home from "./views/Home.vue";
 import LoginUsername from "./views/LoginUsername.vue";
+import Rules from "./views/Rules.vue";
 
 const router = createRouter({
   history: createWebHistory(),
@@ -15,6 +16,11 @@ const router = createRouter({
       path: "/login-username",
       name: "loginUsername",
       component: LoginUsername,
+    },
+    {
+      path: "/rules",
+      name: "rules",
+      component: Rules,
     },
     {
       name: "rooms",
