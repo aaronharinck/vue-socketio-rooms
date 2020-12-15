@@ -1,36 +1,60 @@
 <template>
-  <div>
-    <h3>Game {{ gameId }}</h3>
-    <p v-if="!cards">Game is loading...</p>
-    <ul v-if="connectedUsers">
+  <div class="game-container" v-if="gameLoaded">
+    <h3 class="game-title">Game {{ gameId }}</h3>
+    <ul v-if="connectedUsers" class="game-players">
       <li
         v-for="connectedUser in connectedUsers"
         :key="connectedUser"
+        class="game-player"
         :class="checkUsernameForClass(connectedUser)"
       >
-        {{ connectedUser }}
+        {{ connectedUser }}<br />
+        {{ 12 }} cards
       </li>
     </ul>
+    <p>
+      Minimum: {{ getRequiredCardValue }}
+      {{
+        lastPlayedCards
+          ? lastPlayedCards.length > 1
+            ? `(${lastPlayedCards.length} cards)`
+            : ""
+          : ""
+      }}
+    </p>
     <div class="board">
-      <div>
-        <p>Last played cards</p>
-        <p></p>
-        <div v-for="(lastPlayedCard, index) in lastPlayedCards" :key="index">
-          {{ lastPlayedCard.suit }}{{ lastPlayedCard.value }}
+      <div class="lastPlayedCards">
+        <!-- <p>Last played cards</p> -->
+        <div
+          class="card"
+          v-for="(lastPlayedCard, index) in lastPlayedCards"
+          :key="index"
+        >
+          {{ lastPlayedCard.suit }} {{ lastPlayedCard.value }}
         </div>
       </div>
-      <button v-if="yourTurn" @click="confirmTurn()">confirm turn</button>
-      <div
-        v-for="(ownPlayedCard, index) in ownPlayedCards"
-        :key="ownPlayedCard.suit + ownPlayedCard.value"
-        @click="removeOwnPlayedCard(ownPlayedCard, index)"
-      >
-        {{ ownPlayedCard.suit }}{{ ownPlayedCard.value }}
+      <div class="ownPlayedCards">
+        <div
+          v-for="(ownPlayedCard, index) in ownPlayedCards"
+          :key="ownPlayedCard.suit + ownPlayedCard.value"
+          @click="removeOwnPlayedCard(ownPlayedCard, index)"
+          class="card filled"
+        >
+          {{ ownPlayedCard.suit }} {{ ownPlayedCard.value }}
+        </div>
       </div>
     </div>
-    <p>Your cards: (Required value = {{ getRequiredCardValue }})</p>
-    <div v-if="cards">
+    <button
+      class="button board-confirm-button"
+      v-if="yourTurn"
+      @click="confirmTurn()"
+    >
+      confirm turn
+    </button>
+    <p>Your cards:</p>
+    <div v-if="cards" class="cards">
       <div
+        class="card"
         v-for="(card, index) in cards"
         :key="card.suit + card.value"
         @click="tryToPlayCard(card, index)"
@@ -40,6 +64,13 @@
     </div>
     <!-- <p>{{ turn }} {{ enteredName }}</p> -->
   </div>
+  <div v-else-if="!gameId">
+    <p>Game could not be found</p>
+    <router-link class="button button-secondary" :to="{ name: 'home' }"
+      >Back to home</router-link
+    >
+  </div>
+  <p v-else>Game is loading...</p>
 </template>
 
 <script>
@@ -63,6 +94,7 @@ export default {
   inject: ["socket"],
   data() {
     return {
+      gameLoaded: false,
       connectedUsers: {},
       gameId: this.$route.params.gameId,
       cards: [],
@@ -86,6 +118,7 @@ export default {
       this.connectedUsers = receivedUsers;
       console.log("new game started!");
       this.lastPlayedCards = playedCards;
+      this.gameLoaded = true;
     });
 
     // get turn
@@ -252,7 +285,111 @@ export default {
 </script>
 
 <style scoped>
+.game-title {
+  padding: 0.5rem;
+  margin: 0.5rem;
+}
+
 .playingUser {
-  color: green;
+  color: var(--colorWhite);
+  background: var(--colorSecondary);
+  padding: 2rem;
+  border-radius: 1rem;
+}
+
+.game-players {
+  padding: 0;
+  list-style-type: none;
+  display: flex;
+  justify-content: space-evenly;
+  max-width: 100rem;
+  margin: 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.game-player {
+  max-width: 30%;
+  margin: 0.8rem 2rem;
+}
+
+.board-confirm-button {
+  color: var(--colorWhite);
+  font-weight: bold;
+}
+
+/* BOARD */
+.board {
+  display: flex;
+  margin: 0 auto;
+  justify-content: center;
+}
+
+.game-container p {
+  padding: 0.5rem;
+  margin: 0.5rem;
+}
+
+.lastPlayedCards {
+  display: flex;
+  margin: 0 2rem;
+}
+
+.lastPlayedCards .card {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.ownPlayedCards {
+  display: flex;
+  margin: 0 2rem;
+}
+
+.ownPlayedCards .card {
+  margin-left: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+/* CARDS */
+.cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.card {
+  border: 0.2rem solid var(--colorBlack);
+  border-radius: 1rem;
+  padding: 4rem 2.4rem;
+  margin: 2rem;
+  cursor: pointer;
+  font-size: var(--fontMedium);
+  min-width: 8.6rem;
+  max-width: 100%;
+}
+
+.filled {
+  background: var(--colorWhite);
+}
+
+@media screen and (max-width: 550px) {
+  .game-player {
+    max-width: 30%;
+    margin: 1rem;
+  }
+}
+
+/* https://css-tricks.com/snippets/css/orientation-lock/ */
+@media screen and (min-width: 320px) and (max-width: 767px) and (orientation: portrait) {
+  .game-container {
+    transform: rotate(-90deg);
+    transform-origin: left top;
+    width: 100vh;
+    height: 100vw;
+    overflow-x: hidden;
+    position: absolute;
+    top: 100%;
+    left: 0;
+  }
 }
 </style>
