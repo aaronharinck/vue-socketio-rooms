@@ -94,6 +94,7 @@ a.button {
   padding: 1.5rem 3.5rem;
   background: var(--colorSecondary);
   margin: 2rem;
+  cursor: pointer;
 }
 
 .button + .button {
@@ -108,5 +109,9 @@ a.button-secondary {
 .button-secondary {
   background: var(--colorMain);
   color: var(--colorBlack);
+}
+
+.bold {
+  font-weight: bold;
 }
 </style>

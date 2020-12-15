@@ -1,11 +1,19 @@
 <template>
   <div>
     <h3>President: Room {{ room }}</h3>
-    <button @click="startGame(room)">Start game</button>
-    <p>Share this link to invite your friends! <br />{{ `${shareLink}` }}</p>
-    <ul>
-      <li v-for="user in users" :key="user">{{ user }}</li>
+    <p>
+      <span class="bold">Share this link to invite your friends!</span> <br />{{
+        `${shareLink}`
+      }}
+    </p>
+    <ul class="lobby-user-list">
+      <li v-for="user in users" :key="user" class="lobby-user-listitem">
+        {{ user }}
+      </li>
     </ul>
+    <button class="button" @click="startGame(room)">
+      Everyone is connected, Start game!
+    </button>
   </div>
 </template>
 
@@ -54,3 +62,30 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+button.button {
+  border: 0;
+  color: var(--colorWhite);
+  font-weight: bold;
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+}
+
+.lobby-user-list {
+  max-width: 96rem;
+  margin: 3rem auto;
+  padding: 0;
+  list-style-type: none;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.lobby-user-listitem {
+  background: var(--colorMain);
+  padding: 2rem;
+  font-size: var(--fontMedium);
+  border-radius: 1rem;
+  max-width: 100%;
+}
+</style>
