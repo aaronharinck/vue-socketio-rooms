@@ -359,6 +359,33 @@ const giveWorstCards = (from, to, amount) => {
   console.log("------");
 };
 
+// show card amount of each user
+const getUsersCardsAmounts = roomName => {
+  if (rooms[roomName] && rooms[roomName].users) {
+    let getUsers = Object.keys(rooms[roomName].users);
+
+    let usersWithCardAmounts = getUsers.map(userFromObj => ({
+      username: clients[userFromObj].username,
+      amount: clients[userFromObj].cards.length,
+    }));
+
+    // let usersWithCardAmounts = getUsers.map(userFromObj => ({
+    //   [clients[userFromObj].username]: clients[userFromObj].cards.length,
+    // }));
+
+    io.in(rooms[roomName].name).emit(
+      "getUsersWithCardsAmounts",
+      usersWithCardAmounts
+    );
+    /*
+    let usersWithCardAmounts = getUsers.map(userFromObj => ({
+      [clients[userFromObj].username]: clients[userFromObj].username,
+      cardsAmount: clients[userFromObj].cards.length,
+    }));
+    */
+  }
+};
+
 /*--- SOCKET.IO ---*/
 io.on("connection", socket => {
   //log if a user connected
@@ -599,6 +626,9 @@ io.on("connection", socket => {
             io.in(clients[userId].id).emit("cards", clients[userId].cards);
           });
 
+          // show card amount of each user
+          getUsersCardsAmounts(roomName);
+
           // initiate first turn
           io.in(nextTurn(rooms[roomName], socket)).emit("turn", "your turn");
           console.log(
@@ -711,6 +741,9 @@ io.on("connection", socket => {
             console.log("socket.id.placements: true");
           }
 
+          // show updated card amount of each user
+          getUsersCardsAmounts(roomName);
+
           // check if player is out of cards
           if (
             clients[socket.id].cards.length === 0 &&
@@ -782,6 +815,10 @@ io.on("connection", socket => {
                   "turn",
                   clients[rooms[roomName].playerTurn].username
                 );
+
+                // show updated card amount of each user
+                getUsersCardsAmounts(roomName);
+
                 return;
               }
             } else {

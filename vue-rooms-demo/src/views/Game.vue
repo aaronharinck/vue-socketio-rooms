@@ -1,7 +1,19 @@
 <template>
   <div class="game-container" v-if="gameLoaded">
     <h3 class="game-title">Game {{ gameId }}</h3>
-    <ul v-if="connectedUsers" class="game-players">
+    <ul v-if="usersWithCardsAmounts" class="game-players">
+      <li
+        v-for="userWithCardsAmount in usersWithCardsAmounts"
+        :key="userWithCardsAmount.username"
+        class="game-player"
+        :class="checkUsernameForClass(userWithCardsAmount.username)"
+      >
+        {{ userWithCardsAmount.username }} <br />
+        {{ userWithCardsAmount.amount }} cards
+      </li>
+    </ul>
+
+    <!-- <ul v-if="connectedUsers" class="game-players">
       <li
         v-for="connectedUser in connectedUsers"
         :key="connectedUser"
@@ -11,7 +23,7 @@
         {{ connectedUser }}<br />
         {{ 12 }} cards
       </li>
-    </ul>
+    </ul> -->
     <p>
       Minimum: {{ getRequiredCardValue }}
       {{
@@ -104,6 +116,7 @@ export default {
       activeTurn: "Aaron",
       yourTurn: false,
       currentPlayerTurn: "",
+      usersWithCardsAmounts: [],
     };
   },
   mounted() {
@@ -147,6 +160,13 @@ export default {
     // handle turns
     this.socket.on("turn", turnInfo => {
       this.getTurn(turnInfo);
+    });
+
+    //get cardAmounts
+    this.socket.on("getUsersWithCardsAmounts", usersWithCardsAmounts => {
+      console.log("usersWithCardsAmounts");
+      console.log(usersWithCardsAmounts);
+      this.usersWithCardsAmounts = usersWithCardsAmounts;
     });
   },
 
