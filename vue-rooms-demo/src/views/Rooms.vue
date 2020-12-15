@@ -1,11 +1,11 @@
 <template>
   <div class="hello">
     <router-view></router-view>
-    <h1>{{ connectedRoom }}</h1>
-    <div v-if="!loggedIn">
-      <p>You are not logged in! Please Login {{ enteredName }}</p>
+    <h1>Create or join a room</h1>
+    <div v-if="!loggedIn" class="login-container">
+      <p>You are not logged in! Please Login. <br />{{ enteredName }}</p>
       <p v-if="loginError">{{ loginError }}</p>
-      <form @submit.prevent="">
+      <form @submit.prevent="" class="login-form">
         <label for="user-name">Username</label>
         <input
           id="user-name"
@@ -14,7 +14,7 @@
           @keyup.enter="logIn"
           v-model.trim="enteredName"
         />
-        <button @click="logIn">Connect</button>
+        <button class="button" @click="logIn">Connect</button>
       </form>
     </div>
     <div v-if="loggedIn">
@@ -24,28 +24,36 @@
         </li>
       </ul>
       <p>
-        <button @click="chat('chat from button')">
+        <!-- <button class="button" @click="chat('chat from button')">
           Send chat message to server
-        </button>
+        </button> -->
       </p>
       <p>
-        <button @click="createRoom('room1')">
-          Create a room
+        <button
+          v-if="!createdRoom"
+          class="button button-rooms"
+          @click="createRoom()"
+        >
+          Create a new room
         </button>
       </p>
-      <div
-        class="roomCard"
-        v-for="room in rooms"
-        :key="room.name"
-        @click="joinRoom(room.name)"
-      >
-        {{ room.name }}
-        <!-- room users -->
-        <!-- <span v-for="user in Object.values(room.users)" :key="user">
+      <div class="roomCards-container">
+        <div
+          class="roomCard"
+          v-for="room in rooms"
+          :key="room.name"
+          @click="joinRoom(room.name)"
+        >
+          <span class="roomCard-name">{{ room.name }}</span>
+          <!-- room users -->
+          <!-- <span v-for="user in Object.values(room.users)" :key="user">
           {{ " " + user }}
         </span> -->
-        <!-- show amount of users -->
-        <p>{{ Object.values(room.users).length }} / 8</p>
+          <!-- show amount of users -->
+          <p class="roomCard-userCount">
+            {{ Object.values(room.users).length }} / 8
+          </p>
+        </div>
       </div>
     </div>
   </div>
@@ -66,6 +74,7 @@ export default {
       clientNames: [],
       rooms: "",
       connectedRoom: "Not connected to a room",
+      createdRoom: false,
     };
   },
   props: {
@@ -133,6 +142,7 @@ export default {
     //You can create a room by letting someone join a room which does not exist
     createRoom() {
       this.socket.emit("createRoom");
+      this.createdRoom = true;
     },
     //Join a room that already exists
     joinRoom(roomName) {
@@ -144,6 +154,44 @@ export default {
 
 <!-- Add "scoped" attribute to limit CSS to this component only -->
 <style scoped>
+/* LOGIN */
+.login-container {
+  max-width: 96rem;
+  margin: 0 auto;
+  align-items: center;
+}
+
+.login-form {
+  display: flex;
+  flex-flow: column;
+  max-width: 30rem;
+  margin: 0 auto;
+}
+
+.login-form label {
+  text-align: left;
+}
+
+.login-form input {
+  padding: 1rem;
+}
+
+.login-form button.button {
+  border: 0;
+  padding: 1rem;
+  color: var(--colorWhite);
+  margin: 1rem 0;
+  font-weight: bold;
+  font-family: Avenir, Helvetica, Arial, sans-serif;
+}
+
+/* END LOGIN */
+
+.button-rooms {
+  color: var(--colorWhite);
+  font-weight: bold;
+}
+
 h3 {
   margin: 40px 0 0;
 }
@@ -158,9 +206,35 @@ li {
 a {
   color: #42b983;
 }
+
 .roomCard {
-  padding: 20px;
-  background: greenyellow;
+  padding: 2rem;
+  background: var(--colorMain);
   cursor: pointer;
+  max-width: 100%;
+  margin: 1rem 2rem;
+  border-radius: 2rem;
+}
+
+.roomCard-name {
+  font-weight: bold;
+}
+
+.roomCard-userCount {
+  margin: 1rem;
+}
+
+.roomCards-container {
+  max-width: 96rem;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media screen and (max-width: 550px) {
+  .roomCards-container {
+    grid-template-columns: repeat(1, 1fr);
+  }
 }
 </style>

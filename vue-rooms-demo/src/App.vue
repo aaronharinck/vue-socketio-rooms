@@ -89,6 +89,7 @@ a.button {
 }
 
 .button {
+  border: 0;
   border-radius: 25rem;
   padding: 1.5rem 3.5rem;
   background: var(--colorSecondary);
