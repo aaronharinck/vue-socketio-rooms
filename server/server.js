@@ -86,6 +86,8 @@ const nextTurn = (room, socket) => {
     console.log("clients[room.playerTurn].placement");
     console.log(clients[room.playerTurn].placement);
 
+    /* TEMPORARILY DISABLE AUTO SKIP TURNS */
+    /*
     // check if the player already finished
     if (clients[room.playerTurn].placement) {
       //if player already had a placement, go to the next player who has no placement
@@ -121,6 +123,9 @@ const nextTurn = (room, socket) => {
       // currentPlayer is valid, send return
       return room.playerTurn;
     }
+    */
+
+    return room.playerTurn;
   } else if (room && room.users.hasOwnProperty(socket.id)) {
     // start turns
     room.currentTurn = 0;
@@ -150,9 +155,13 @@ const checkForNewRound = (room, socket) => {
 
   // get finishedUsers, because we want subtract them from our total room users
   let finishedUsersLength = 0;
+
+  /* TEMPORARILY DISABLE AUTO SKIP TURNS */
+  /*
   if (room.finishedUsers) {
     finishedUsersLength = room.finishedUsers.length;
   }
+  */
 
   // if every user passed, create a new round
   if (
